@@ -2,6 +2,8 @@ package org.firstinspires.ftc.teamcode.drive;
 
 import androidx.annotation.NonNull;
 
+import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.control.PIDCoefficients;
 import com.acmerobotics.roadrunner.drive.DriveSignal;
@@ -21,10 +23,13 @@ import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.hardware.configuration.typecontainers.MotorConfigurationType;
+import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.teamcode.trajectorysequence.TrajectorySequence;
 import org.firstinspires.ftc.teamcode.trajectorysequence.TrajectorySequenceBuilder;
@@ -52,10 +57,10 @@ import static org.firstinspires.ftc.teamcode.drive.DriveConstants.kV;
  */
 @Config
 public class SampleMecanumDrive extends MecanumDrive {
-    public static PIDCoefficients TRANSLATIONAL_PID = new PIDCoefficients(0, 0, 0);
-    public static PIDCoefficients HEADING_PID = new PIDCoefficients(0, 0, 0);
+    public static PIDCoefficients TRANSLATIONAL_PID = new PIDCoefficients(9, 0, 1);
+    public static PIDCoefficients HEADING_PID = new PIDCoefficients(10, 0, 1);
 
-    public static double LATERAL_MULTIPLIER = 1;
+    public static double LATERAL_MULTIPLIER = 1.5388999714;
 
     public static double VX_WEIGHT = 1;
     public static double VY_WEIGHT = 1;
@@ -66,16 +71,41 @@ public class SampleMecanumDrive extends MecanumDrive {
     private static final TrajectoryVelocityConstraint VEL_CONSTRAINT = getVelocityConstraint(MAX_VEL, MAX_ANG_VEL, TRACK_WIDTH);
     private static final TrajectoryAccelerationConstraint ACCEL_CONSTRAINT = getAccelerationConstraint(MAX_ACCEL);
 
+    // Constants define movement of claw; Min and Max Positions
+    public static final double INCREMENT   = 0.05;     // amount to slew servo each CYCLE_MS cycle
+    public static final int    CYCLE_MS    =   30;     // period of each cycle
+
+    public static final double AMAX_POS = 1.4;     // Maximum rotational position ---- Phil Claw: 1.4; GoBilda Claw: 1.4
+    public static final double AMIN_POS = 0.61;     // Minimum rotational position ---- Phil Claw: 0.7; GoBilda Claw: 0.61
+    public double  Aposition = AMIN_POS;                 // Start position
+
+    public static final double BMAX_POS     =  1.00;     // Maximum rotational position
+    public static final double BMIN_POS     =  0.50;     // Minimum rotational position
+    public double  Bposition = BMIN_POS;                 // Start position
+
+    public static final double CLAW_OPEN_SETTING = AMAX_POS;
+    public static final double CLAW_CLOSED_SETTING = AMIN_POS;
+
+    // Constants define junction height at tile intersections in units of linear slide motor encoder counts
+    public static final int     JUNCTION_HIGH             = 2400;    // Height of junctions - highest
+    public static final int     JUNCTION_MEDIUM           = 2500;    // Height of junctions - medium
+    public static final int     JUNCTION_LOW              = 1450;     // Height of junctions - shortest
+    public static final int     JUNCTION_GROUND           = 100;     // Height of junctions with no pole
+
     private TrajectoryFollower follower;
 
-    private DcMotorEx leftFront, leftRear, rightRear, rightFront;
+    private ElapsedTime runtime = new ElapsedTime();
+    private DcMotorEx leftFront, leftRear, rightRear, rightFront, slideLeft, slideRight, turret;
+    private Servo Claw;
     private List<DcMotorEx> motors;
 
     private BNO055IMU imu;
     private VoltageSensor batteryVoltageSensor;
+    private LinearOpMode opMode;
 
-    public SampleMecanumDrive(HardwareMap hardwareMap) {
+    public SampleMecanumDrive(LinearOpMode opMode, HardwareMap hardwareMap) {
         super(kV, kA, kStatic, TRACK_WIDTH, TRACK_WIDTH, LATERAL_MULTIPLIER);
+        this.opMode = opMode;
 
         follower = new HolonomicPIDVAFollower(TRANSLATIONAL_PID, TRANSLATIONAL_PID, HEADING_PID,
                 new Pose2d(0.5, 0.5, Math.toRadians(5.0)), 0.5);
@@ -87,12 +117,6 @@ public class SampleMecanumDrive extends MecanumDrive {
         for (LynxModule module : hardwareMap.getAll(LynxModule.class)) {
             module.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
         }
-
-        // TODO: adjust the names of the following hardware devices to match your configuration
-        imu = hardwareMap.get(BNO055IMU.class, "imu");
-        BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
-        parameters.angleUnit = BNO055IMU.AngleUnit.RADIANS;
-        imu.initialize(parameters);
 
         // TODO: If the hub containing the IMU you are using is mounted so that the "REV" logo does
         // not face up, remap the IMU axes so that the z-axis points upward (normal to the floor.)
@@ -116,10 +140,16 @@ public class SampleMecanumDrive extends MecanumDrive {
         // For example, if +Y in this diagram faces downwards, you would use AxisDirection.NEG_Y.
         // BNO055IMUUtil.remapZAxis(imu, AxisDirection.NEG_Y);
 
-        leftFront = hardwareMap.get(DcMotorEx.class, "leftFront");
-        leftRear = hardwareMap.get(DcMotorEx.class, "leftRear");
-        rightRear = hardwareMap.get(DcMotorEx.class, "rightRear");
-        rightFront = hardwareMap.get(DcMotorEx.class, "rightFront");
+        leftFront = hardwareMap.get(DcMotorEx.class, "frontLeft");
+        leftRear = hardwareMap.get(DcMotorEx.class, "backLeft");
+        rightRear = hardwareMap.get(DcMotorEx.class, "backRight");
+        rightFront = hardwareMap.get(DcMotorEx.class, "frontRight");
+
+        slideLeft = hardwareMap.get(DcMotorEx.class, "slideLeft");
+        slideRight = hardwareMap.get(DcMotorEx.class, "slideRight");
+        turret = hardwareMap.get(DcMotorEx.class, "turret");
+
+        Claw = hardwareMap.get(Servo.class, "Claw");
 
         motors = Arrays.asList(leftFront, leftRear, rightRear, rightFront);
 
@@ -133,6 +163,8 @@ public class SampleMecanumDrive extends MecanumDrive {
             setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         }
 
+        slideLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        slideRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         if (RUN_USING_ENCODER && MOTOR_VELO_PID != null) {
@@ -140,9 +172,12 @@ public class SampleMecanumDrive extends MecanumDrive {
         }
 
         // TODO: reverse any motors using DcMotor.setDirection()
+        leftFront.setDirection(DcMotorSimple.Direction.REVERSE);
+        leftRear.setDirection(DcMotorSimple.Direction.REVERSE);
 
         // TODO: if desired, use setLocalizer() to change the localization method
-        // for instance, setLocalizer(new ThreeTrackingWheelLocalizer(...));
+
+        setLocalizer(new StandardTrackingWheelLocalizer(hardwareMap));
 
         trajectorySequenceRunner = new TrajectorySequenceRunner(follower, HEADING_PID);
     }
@@ -231,6 +266,9 @@ public class SampleMecanumDrive extends MecanumDrive {
         for (DcMotorEx motor : motors) {
             motor.setZeroPowerBehavior(zeroPowerBehavior);
         }
+        slideLeft.setZeroPowerBehavior(zeroPowerBehavior);
+        slideRight.setZeroPowerBehavior(zeroPowerBehavior);
+        turret.setZeroPowerBehavior(zeroPowerBehavior);
     }
 
     public void setPIDFCoefficients(DcMotor.RunMode runMode, PIDFCoefficients coefficients) {
@@ -264,6 +302,70 @@ public class SampleMecanumDrive extends MecanumDrive {
         setDrivePower(vel);
     }
 
+    public void moveSlides() {
+        double slidePower = Range.clip(opMode.gamepad2.right_stick_y, -1.0, 1.0);
+
+        if (slidePower > 0)
+            slidePower /= 2;
+
+        slideLeft.setPower(-0.7 * slidePower);
+        slideRight.setPower(0.7 * slidePower);
+
+        if ((-slideLeft.getCurrentPosition() + slideRight.getCurrentPosition())/2 > 4000) {
+            slideLeft.setPower(0.0);
+            slideLeft.setPower(0.0);
+        }
+    }
+
+    public void moveSlidesToHeight(int motorSlideEncoderCounts) {
+        double currentTime = runtime.time();
+
+        opMode.sleep(500);
+
+        slideLeft.setTargetPosition(-motorSlideEncoderCounts);
+        slideRight.setTargetPosition(motorSlideEncoderCounts);
+
+        slideLeft.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
+        slideRight.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
+
+        slideLeft.setPower(-0.85);
+        slideRight.setPower(0.85);
+
+        if (slideRight.getCurrentPosition() < motorSlideEncoderCounts) {
+            while ((slideRight.getCurrentPosition() <= motorSlideEncoderCounts) && (runtime.time() <= currentTime + 6.0)) {
+                opMode.telemetry.addData("Slide Pos: ", slideRight.getCurrentPosition());
+                opMode.telemetry.update();
+            }
+        }
+        else {
+            while (slideRight.getCurrentPosition() >= motorSlideEncoderCounts) {
+                opMode.telemetry.addData("Slide Pos: ", slideRight.getCurrentPosition());
+                opMode.telemetry.update();
+            }
+        }
+
+        slideLeft.setPower(0.0);
+        slideRight.setPower(0.0);
+
+        slideLeft.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        slideRight.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+
+    }
+
+    public void moveTurret() {
+        double turretPower = Range.clip(opMode.gamepad2.left_stick_x, -1.0, 1.0);
+
+        turret.setPower(0.5 * turretPower);
+    }
+
+    public void openClaw() {
+        Claw.setPosition(CLAW_OPEN_SETTING);
+    }
+
+    public void closeClaw() {
+        Claw.setPosition(CLAW_CLOSED_SETTING);
+    }
+
     @NonNull
     @Override
     public List<Double> getWheelPositions() {
@@ -292,9 +394,7 @@ public class SampleMecanumDrive extends MecanumDrive {
     }
 
     @Override
-    public double getRawExternalHeading() {
-        return imu.getAngularOrientation().firstAngle;
-    }
+    public double getRawExternalHeading() { return 0; }
 
     @Override
     public Double getExternalHeadingVelocity() {
