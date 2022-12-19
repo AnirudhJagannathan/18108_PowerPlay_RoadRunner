@@ -23,7 +23,6 @@ import java.security.acl.LastOwnerException;
 
 @Autonomous
 public class MyOpmode extends LinearOpMode {
-
     @Override
     public void runOpMode() throws InterruptedException {
         SampleMecanumDrive drive = new SampleMecanumDrive(this, hardwareMap);

@@ -52,6 +52,8 @@ import static org.firstinspires.ftc.teamcode.drive.DriveConstants.kA;
 import static org.firstinspires.ftc.teamcode.drive.DriveConstants.kStatic;
 import static org.firstinspires.ftc.teamcode.drive.DriveConstants.kV;
 
+import android.util.Log;
+
 /*
  * Simple mecanum drive hardware implementation for REV hardware.
  */
@@ -75,8 +77,8 @@ public class SampleMecanumDrive extends MecanumDrive {
     public static final double INCREMENT   = 0.05;     // amount to slew servo each CYCLE_MS cycle
     public static final int    CYCLE_MS    =   30;     // period of each cycle
 
-    public static final double AMAX_POS = 1.4;     // Maximum rotational position ---- Phil Claw: 1.4; GoBilda Claw: 1.4
-    public static final double AMIN_POS = 0.61;     // Minimum rotational position ---- Phil Claw: 0.7; GoBilda Claw: 0.61
+    public static final double AMAX_POS = 1.00;     // Maximum rotational position ---- Phil Claw: 1.4; GoBilda Claw: 1.4
+    public static final double AMIN_POS = 0.35;     // Minimum rotational position ---- Phil Claw: 0.7; GoBilda Claw: 0.61
     public double  Aposition = AMIN_POS;                 // Start position
 
     public static final double BMAX_POS     =  1.00;     // Maximum rotational position
@@ -163,8 +165,6 @@ public class SampleMecanumDrive extends MecanumDrive {
             setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         }
 
-        slideLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        slideRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         if (RUN_USING_ENCODER && MOTOR_VELO_PID != null) {
@@ -172,11 +172,10 @@ public class SampleMecanumDrive extends MecanumDrive {
         }
 
         // TODO: reverse any motors using DcMotor.setDirection()
-        leftFront.setDirection(DcMotorSimple.Direction.REVERSE);
+        //leftFront.setDirection(DcMotorSimple.Direction.REVERSE);
         leftRear.setDirection(DcMotorSimple.Direction.REVERSE);
 
         // TODO: if desired, use setLocalizer() to change the localization method
-
         setLocalizer(new StandardTrackingWheelLocalizer(hardwareMap));
 
         trajectorySequenceRunner = new TrajectorySequenceRunner(follower, HEADING_PID);
@@ -260,6 +259,9 @@ public class SampleMecanumDrive extends MecanumDrive {
         for (DcMotorEx motor : motors) {
             motor.setMode(runMode);
         }
+        slideLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        slideRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        turret.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
 
     public void setZeroPowerBehavior(DcMotor.ZeroPowerBehavior zeroPowerBehavior) {
@@ -305,16 +307,15 @@ public class SampleMecanumDrive extends MecanumDrive {
     public void moveSlides() {
         double slidePower = Range.clip(opMode.gamepad2.right_stick_y, -1.0, 1.0);
 
-        if (slidePower > 0)
-            slidePower /= 2;
-
         slideLeft.setPower(-0.7 * slidePower);
         slideRight.setPower(0.7 * slidePower);
 
-        if ((-slideLeft.getCurrentPosition() + slideRight.getCurrentPosition())/2 > 4000) {
+        /* if ((-slideLeft.getCurrentPosition() + slideRight.getCurrentPosition())/2 > 4000) {
             slideLeft.setPower(0.0);
             slideLeft.setPower(0.0);
         }
+
+         */
     }
 
     public void moveSlidesToHeight(int motorSlideEncoderCounts) {
@@ -364,6 +365,31 @@ public class SampleMecanumDrive extends MecanumDrive {
 
     public void closeClaw() {
         Claw.setPosition(CLAW_CLOSED_SETTING);
+    }
+
+    public void mecanumDriving() {
+        double drive = opMode.gamepad1.left_stick_y;
+        double strafe = opMode.gamepad1.right_stick_x;
+        double turn = opMode.gamepad1.left_stick_x;
+        double v1, v2, v3, v4;
+
+        if (opMode.gamepad1.right_bumper) {
+            v1 = Range.clip(-drive + strafe + turn, -0.2, 0.2);
+            v2 = Range.clip(-drive - strafe - turn, -0.2, 0.2);
+            v3 = Range.clip(-drive + strafe - turn, -0.2, 0.2);
+            v4 = Range.clip(-drive - strafe + turn, -0.2, 0.2);
+        }
+
+        else {
+            v1 = Range.clip(-drive + strafe + turn, -0.7, 0.7);
+            v2 = Range.clip(-drive - strafe - turn, -0.7, 0.7);
+            v3 = Range.clip(-drive + strafe - turn, -0.7, 0.7);
+            v4 = Range.clip(-drive - strafe + turn, -0.7, 0.7);
+        }
+        leftFront.setPower(v1);
+        rightFront.setPower(v2);
+        leftRear.setPower(v3);
+        rightRear.setPower(v4);
     }
 
     @NonNull
