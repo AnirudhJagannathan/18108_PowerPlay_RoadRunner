@@ -77,16 +77,16 @@ public class SampleMecanumDrive extends MecanumDrive {
     public static final double INCREMENT   = 0.05;     // amount to slew servo each CYCLE_MS cycle
     public static final int    CYCLE_MS    =   30;     // period of each cycle
 
-    public static final double AMAX_POS = 1.00;     // Maximum rotational position ---- Phil Claw: 1.4; GoBilda Claw: 1.4
-    public static final double AMIN_POS = 0.35;     // Minimum rotational position ---- Phil Claw: 0.7; GoBilda Claw: 0.61
+    public static final double AMAX_POS = 0.60;     // Maximum rotational position ---- Phil Claw: 1.4; GoBilda Claw: 1.4
+    public static final double AMIN_POS = 0.25;     // Minimum rotational position ---- Phil Claw: 0.7; GoBilda Claw: 0.61
     public double  Aposition = AMIN_POS;                 // Start position
 
     public static final double BMAX_POS     =  1.00;     // Maximum rotational position
-    public static final double BMIN_POS     =  0.50;     // Minimum rotational position
+    public static final double BMIN_POS     =  0.40;     // Minimum rotational position
     public double  Bposition = BMIN_POS;                 // Start position
 
-    public static final double CLAW_OPEN_SETTING = AMAX_POS;
-    public static final double CLAW_CLOSED_SETTING = AMIN_POS;
+    public static final double CLAW_OPEN_SETTING = AMIN_POS;
+    public static final double CLAW_CLOSED_SETTING = AMAX_POS;
 
     // Constants define junction height at tile intersections in units of linear slide motor encoder counts
     public static final int     JUNCTION_HIGH             = 2400;    // Height of junctions - highest
@@ -176,6 +176,7 @@ public class SampleMecanumDrive extends MecanumDrive {
         leftRear.setDirection(DcMotorSimple.Direction.REVERSE);
 
         // TODO: if desired, use setLocalizer() to change the localization method
+        setLocalizer(new StandardTrackingWheelLocalizer(hardwareMap));
         setLocalizer(new StandardTrackingWheelLocalizer(hardwareMap));
 
         trajectorySequenceRunner = new TrajectorySequenceRunner(follower, HEADING_PID);
@@ -307,8 +308,22 @@ public class SampleMecanumDrive extends MecanumDrive {
     public void moveSlides() {
         double slidePower = Range.clip(opMode.gamepad2.right_stick_y, -1.0, 1.0);
 
-        slideLeft.setPower(-0.7 * slidePower);
-        slideRight.setPower(0.7 * slidePower);
+        slideLeft.setPower(-0.85 * slidePower);
+        slideRight.setPower(0.85 * slidePower);
+
+        //Limit how high the slides can go
+
+        /* if(((slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()/2) > 3750 && slidePower > 0) ||
+                ((slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()/2) < -1750 && slidePower < 0)) {
+            slideLeft.setPower(0);
+            slideRight.setPower(0);
+        }
+
+         */
+        opMode.telemetry.addData("slideLeftHeight", slideLeft.getCurrentPosition());
+        opMode.telemetry.addData("slideRightHeight", slideLeft.getCurrentPosition());
+    }
+
 
         /* if ((-slideLeft.getCurrentPosition() + slideRight.getCurrentPosition())/2 > 4000) {
             slideLeft.setPower(0.0);
@@ -316,15 +331,14 @@ public class SampleMecanumDrive extends MecanumDrive {
         }
 
          */
-    }
 
     public void moveSlidesToHeight(int motorSlideEncoderCounts) {
         double currentTime = runtime.time();
 
         opMode.sleep(500);
 
-        slideLeft.setTargetPosition(-motorSlideEncoderCounts);
-        slideRight.setTargetPosition(motorSlideEncoderCounts);
+        slideLeft.setTargetPosition(motorSlideEncoderCounts);
+        slideRight.setTargetPosition(-motorSlideEncoderCounts);
 
         slideLeft.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
         slideRight.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
@@ -353,10 +367,21 @@ public class SampleMecanumDrive extends MecanumDrive {
 
     }
 
-    public void moveTurret() {
+    public void moveTurret() throws InterruptedException {
         double turretPower = Range.clip(opMode.gamepad2.left_stick_x, -1.0, 1.0);
+        double turretPos = turret.getCurrentPosition();
+        turret.setPower(-0.5 * turretPower);
+        opMode.telemetry.addData("turretPos", turretPos);
 
-        turret.setPower(0.5 * turretPower);
+        /* if ((turretPos >= 880 && turretPower < 0) || (turretPos <= -880 && turretPower > 0)) {
+            while (true) {
+                turret.setPower(0);
+                opMode.wait(100);
+                break;
+            }
+        }
+
+         */
     }
 
     public void openClaw() {
@@ -381,10 +406,10 @@ public class SampleMecanumDrive extends MecanumDrive {
         }
 
         else {
-            v1 = Range.clip(-drive + strafe + turn, -0.7, 0.7);
-            v2 = Range.clip(-drive - strafe - turn, -0.7, 0.7);
-            v3 = Range.clip(-drive + strafe - turn, -0.7, 0.7);
-            v4 = Range.clip(-drive - strafe + turn, -0.7, 0.7);
+            v1 = Range.clip(-drive + strafe + turn, -0.85, 0.85);
+            v2 = Range.clip(-drive - strafe - turn, -0.85, 0.85);
+            v3 = Range.clip(-drive + strafe - turn, -0.85, 0.85);
+            v4 = Range.clip(-drive - strafe + turn, -0.85, 0.85);
         }
         leftFront.setPower(v1);
         rightFront.setPower(v2);
