@@ -308,20 +308,20 @@ public class SampleMecanumDrive extends MecanumDrive {
     public void moveSlides() {
         double slidePower = Range.clip(opMode.gamepad2.right_stick_y, -1.0, 1.0);
 
-        slideLeft.setPower(-0.85 * slidePower);
-        slideRight.setPower(0.85 * slidePower);
-
         //Limit how high the slides can go
 
-        /* if(((slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()/2) > 3750 && slidePower > 0) ||
-                ((slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()/2) < -1750 && slidePower < 0)) {
+        if(((slideLeft.getCurrentPosition()) > 5000 && slidePower < 0) ||
+                ((slideLeft.getCurrentPosition()) < 100 && slidePower > 0)){
             slideLeft.setPower(0);
             slideRight.setPower(0);
         }
-
-         */
+        else{
+            slideLeft.setPower(-0.85 * slidePower);
+            slideRight.setPower(0.85 * slidePower);
+        }
+        opMode.telemetry.addData("slidePower", slidePower);
         opMode.telemetry.addData("slideLeftHeight", slideLeft.getCurrentPosition());
-        opMode.telemetry.addData("slideRightHeight", slideLeft.getCurrentPosition());
+        opMode.telemetry.addData("slideRightHeight", slideRight.getCurrentPosition());
     }
 
 
@@ -372,11 +372,11 @@ public class SampleMecanumDrive extends MecanumDrive {
         double turretPos = turret.getCurrentPosition();
         opMode.telemetry.addData("turretPos", turretPos);
 
-        if ((turretPos >= 880 && turretPower < 0.01) || (turretPos <= -880 && turretPower > 0.01)) {
+        if ((turretPos >= 850 && turretPower < -0.01) || (turretPos <= -850 && turretPower > 0.01)) {
             turret.setPower(0);
         }
         else{
-            turret.setPower(-0.5 * turretPower);
+            turret.setPower(-0.3 * turretPower);
         }
     }
 
