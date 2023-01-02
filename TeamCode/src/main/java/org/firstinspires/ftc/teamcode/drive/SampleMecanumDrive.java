@@ -370,18 +370,14 @@ public class SampleMecanumDrive extends MecanumDrive {
     public void moveTurret() throws InterruptedException {
         double turretPower = Range.clip(opMode.gamepad2.left_stick_x, -1.0, 1.0);
         double turretPos = turret.getCurrentPosition();
-        turret.setPower(-0.5 * turretPower);
         opMode.telemetry.addData("turretPos", turretPos);
 
-        /* if ((turretPos >= 880 && turretPower < 0) || (turretPos <= -880 && turretPower > 0)) {
-            while (true) {
-                turret.setPower(0);
-                opMode.wait(100);
-                break;
-            }
+        if ((turretPos >= 880 && turretPower < 0.01) || (turretPos <= -880 && turretPower > 0.01)) {
+            turret.setPower(0);
         }
-
-         */
+        else{
+            turret.setPower(-0.5 * turretPower);
+        }
     }
 
     public void openClaw() {
