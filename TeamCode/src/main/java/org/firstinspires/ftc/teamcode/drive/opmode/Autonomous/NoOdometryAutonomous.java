@@ -148,10 +148,18 @@ public class NoOdometryAutonomous extends LinearOpMode {
         else if (tagOfInterest != null) {
             drive.closeClaw();
             drive.moveSlidesToHeightABS(700);
-            drive.driveStraightGyroSlidesTurret(17, 0.25, 2000, 0.8, 440, 0.25);
+            drive.driveStraightGyroSlidesTurret(16, 0.25, 2000, 0.8, 400, 0.7);
             drive.openClaw();
-            drive.driveStraightGyroSlidesTurret(33, 0.4, 2100, 0.8, -440, 0.25);
-            drive.strafeRightGyroSlidesTurret(30, 0.4, 1800, 0.8, -440, 0.25);
+            sleep(200);
+            drive.closeClaw();
+            drive.driveStraightGyroSlidesTurret(37, 0.75, 2100, 0.8, -440, 1);
+            drive.driveStraightGyroSlidesTurret(-1.5, 0.4, 750, 0.8, -440, 0.25);
+            drive.openClaw();
+            drive.strafeRightGyroSlidesTurret(30, 0.6, 750, 0.8, -440, 0.25);
+            drive.closeClaw();
+            sleep(400);
+            drive.driveStraightGyroSlidesTurret(0, 0, 1500, 1, -440, 0.25);
+            drive.strafeLeftGyroSlidesTurret(-22, 0.6, 1500, 0.8, -440, 0.25);
 
             if(tagOfInterest.id == LEFT)
             {
