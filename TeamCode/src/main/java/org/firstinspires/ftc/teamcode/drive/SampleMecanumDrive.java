@@ -31,6 +31,10 @@ import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.hardware.configuration.typecontainers.MotorConfigurationType;
 import com.qualcomm.robotcore.util.Range;
 
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
+import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 import org.firstinspires.ftc.teamcode.trajectorysequence.TrajectorySequence;
 import org.firstinspires.ftc.teamcode.trajectorysequence.TrajectorySequenceBuilder;
 import org.firstinspires.ftc.teamcode.trajectorysequence.TrajectorySequenceRunner;
@@ -85,8 +89,11 @@ public class SampleMecanumDrive extends MecanumDrive {
     public static final double BMIN_POS     =  0.40;     // Minimum rotational position
     public double  Bposition = BMIN_POS;                 // Start position
 
-    public static final double CLAW_OPEN_SETTING = AMIN_POS;
-    public static final double CLAW_CLOSED_SETTING = AMAX_POS;
+    public static final double CLAW_OPEN_SETTING = AMAX_POS;
+    public static final double CLAW_CLOSED_SETTING = AMIN_POS;
+
+    Orientation lastAngles = new Orientation();
+    double globalAngle, startAngle, endAngle, currentAngle;
 
     // Constants define junction height at tile intersections in units of linear slide motor encoder counts
     public static final int     JUNCTION_HIGH             = 2400;    // Height of junctions - highest
@@ -102,8 +109,30 @@ public class SampleMecanumDrive extends MecanumDrive {
     private List<DcMotorEx> motors;
 
     private BNO055IMU imu;
+    public BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
     private VoltageSensor batteryVoltageSensor;
     private LinearOpMode opMode;
+
+    public double  targetHeading = 0;
+    public double  driveSpeed    = 0;
+    public double  turnSpeed     = 0;
+    public double  leftSpeed     = 0;
+    public double  rightSpeed    = 0;
+    public double leftPower = 0.0;
+    public double rightPower = 0.0;
+    public double drive1 = 0.0;
+    public double drive2 = 0.0;
+    public double turn1 = 0.0;
+    public double turn2 = 0.0;
+    public int     leftFrontTarget  = 0;
+    public int     rightFrontTarget = 0;
+    public int     leftRearTarget   = 0;
+    public int     rightRearTarget  = 0;
+    public int startMotorCounts = 0;
+    public int stopMotorCounts = 0;
+
+    static final double     STRAFE_COUNTS_PER_INCH  = 47.4369230781;
+    static final double     WHEEL_COUNTS_PER_INCH   = 142.3636363625;
 
     public SampleMecanumDrive(LinearOpMode opMode, HardwareMap hardwareMap) {
         super(kV, kA, kStatic, TRACK_WIDTH, TRACK_WIDTH, LATERAL_MULTIPLIER);
@@ -153,6 +182,12 @@ public class SampleMecanumDrive extends MecanumDrive {
 
         Claw = hardwareMap.get(Servo.class, "Claw");
 
+        imu = hardwareMap.get(BNO055IMU.class, "imu");
+
+        // Initialize values for IMU
+        parameters.angleUnit            = BNO055IMU.AngleUnit.DEGREES;
+        imu.initialize(parameters);
+
         motors = Arrays.asList(leftFront, leftRear, rightRear, rightFront);
 
         for (DcMotorEx motor : motors) {
@@ -186,6 +221,7 @@ public class SampleMecanumDrive extends MecanumDrive {
         return new TrajectoryBuilder(startPose, VEL_CONSTRAINT, ACCEL_CONSTRAINT);
     }
 
+
     public TrajectoryBuilder trajectoryBuilder(Pose2d startPose, boolean reversed) {
         return new TrajectoryBuilder(startPose, reversed, VEL_CONSTRAINT, ACCEL_CONSTRAINT);
     }
@@ -208,6 +244,83 @@ public class SampleMecanumDrive extends MecanumDrive {
                         .turn(angle)
                         .build()
         );
+    }
+
+    private void resetAngle() {
+        lastAngles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX,
+                AngleUnit.DEGREES);
+        globalAngle = 0;
+    }
+
+    private double getAngle() {
+
+        Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+        opMode.telemetry.addData("Gyro Angle", "(%.2f)", angles.firstAngle);
+        opMode.telemetry.addData("Encoders:", "M0: %3d  M1:%3d  M2:%3d  M3:%3d",
+                leftFront.getCurrentPosition(),
+                rightFront.getCurrentPosition(),
+                leftRear.getCurrentPosition(),
+                rightRear.getCurrentPosition());
+        opMode.telemetry.update();
+
+        double deltaAngle = angles.firstAngle - lastAngles.firstAngle;
+
+        if (deltaAngle < -180)
+            deltaAngle += 360;
+        else if (deltaAngle > 180)
+            deltaAngle -= 360;
+
+        globalAngle += deltaAngle;
+        lastAngles = angles;
+
+        return globalAngle;
+    }
+
+    private double checkDirection() {
+        // The gain value determines how sensitive the correction is to direction changes.
+        // You will have to experiment with your robot to get small smooth direction changes
+        // to stay on a straight line.
+        double correction, angle, gain = .02;
+
+        angle = getAngle();
+
+        if (angle == 0)
+            correction = 0;             // no adjustment.
+        else
+            correction = -angle;        // reverse sign of angle for correction.
+
+        correction = correction * gain;
+
+        return correction;
+    }
+
+    public void moveTurretToPositionABS(int motorTurretEncoderCounts) {
+        int turretHalfRotationCounts = 4000;  // This number is just a guess, need to check on B Bot
+
+        turret.setTargetPosition(motorTurretEncoderCounts);
+        turret.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
+        if (Math.abs(motorTurretEncoderCounts) < turretHalfRotationCounts) {
+            if (turret.getCurrentPosition() < motorTurretEncoderCounts) {
+                turret.setPower(0.1);
+            } else {
+                turret.setPower(-0.1);
+            }
+        }
+    }
+
+    public void moveSlidesToHeightABS(int motorSlideEncoderCounts) {
+        double currentTime = runtime.time();
+
+        // opMode.sleep(500);
+
+        slideLeft.setTargetPosition(motorSlideEncoderCounts);
+        slideRight.setTargetPosition(-motorSlideEncoderCounts);
+
+        slideLeft.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
+        slideRight.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
+
+        slideLeft.setPower(-0.5);
+        slideRight.setPower(0.5);
     }
 
     public void turn(double angle) {
@@ -347,7 +460,7 @@ public class SampleMecanumDrive extends MecanumDrive {
         slideRight.setPower(0.85);
 
         if (slideRight.getCurrentPosition() < motorSlideEncoderCounts) {
-            while ((slideRight.getCurrentPosition() <= motorSlideEncoderCounts) && (runtime.time() <= currentTime + 6.0)) {
+            while ((slideRight.getCurrentPosition() <= motorSlideEncoderCounts)) {
                 opMode.telemetry.addData("Slide Pos: ", slideRight.getCurrentPosition());
                 opMode.telemetry.update();
             }
@@ -440,6 +553,592 @@ public class SampleMecanumDrive extends MecanumDrive {
         rightFront.setPower(v3);
     }
 
+    public void turnTankGyro(double angleToTurn, double anglePower) {
+        double angle = angleToTurn;
+        double power = anglePower;
+
+        Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+        opMode.telemetry.addData("Gyro Angle", "(%.2f)", angles.firstAngle);
+        opMode.telemetry.addData("Encoders:", "M0: %3d  M1:%3d  M2:%3d  M3:%3d",
+                leftFront.getCurrentPosition(),
+                rightFront.getCurrentPosition(),
+                leftRear.getCurrentPosition(),
+                rightRear.getCurrentPosition());
+        opMode.telemetry.update();
+
+        leftFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        resetAngle();
+
+        currentAngle = getAngle();
+        startAngle = currentAngle;
+
+        opMode.sleep(250);
+
+        if (angle <= 0) {
+            // Start Right turn
+            leftFront.setPower(power);
+            rightFront.setPower(-1 * power);
+            leftRear.setPower(power);
+            rightRear.setPower(-1 * power);
+
+            while (true) {
+                currentAngle = getAngle();
+
+                if (currentAngle <= 0.5 * angle) {
+                    leftFront.setPower(0.9 * power);
+                    rightFront.setPower(-0.9 * power);
+                    leftRear.setPower(0.9 * power);
+                    rightRear.setPower(-0.9 * power);
+                }
+
+                // Stop turning when the turned angle = requested angle
+                if (currentAngle <= angle) {
+                    leftFront.setPower(0.0);
+                    rightFront.setPower(0.0);
+                    leftRear.setPower(0.0);
+                    rightRear.setPower(0.0);
+                    break;
+                }
+                opMode.telemetry.addData("Gyro Angle", "(%.2f)", angles.firstAngle);
+                opMode.telemetry.addData("Encoders:", "M0: %3d  M1:%3d  M2:%3d  M3:%3d",
+                        leftFront.getCurrentPosition(),
+                        rightFront.getCurrentPosition(),
+                        leftRear.getCurrentPosition(),
+                        rightRear.getCurrentPosition());
+                opMode.telemetry.update();
+            }
+        } else {
+            // Start Left turn
+            leftFront.setPower(-1 * power);
+            rightFront.setPower(power);
+            leftRear.setPower(-1 * power);
+            rightRear.setPower(power);
+
+            while (true) {
+                currentAngle = getAngle();
+
+                if (currentAngle >= 0.5 * angle) {
+                    leftFront.setPower(-0.9 * power);
+                    rightFront.setPower(0.9 * power);
+                    leftRear.setPower(-0.9 * power);
+                    rightRear.setPower(0.9 * power);
+                }
+
+                // Stop turning when the turned angle = requested angle
+                if (currentAngle >= angle) {
+                    leftFront.setPower(0.0);
+                    rightFront.setPower(0.0);
+                    leftRear.setPower(0.0);
+                    rightRear.setPower(0.0);
+                    break;
+                }
+                opMode.telemetry.addData("Gyro Angle", "(%.2f)", angles.firstAngle);
+                opMode.telemetry.addData("Encoders:", "M0: %3d  M1:%3d  M2:%3d  M3:%3d",
+                        leftFront.getCurrentPosition(),
+                        rightFront.getCurrentPosition(),
+                        leftRear.getCurrentPosition(),
+                        rightRear.getCurrentPosition());
+                opMode.telemetry.update();
+            }
+        }
+    }
+
+    public void driveStraightGyro(double inchesToDrive, double drivePower) {
+
+        double power = drivePower;
+        double motorDistance = (double) (inchesToDrive * WHEEL_COUNTS_PER_INCH);
+        double correction = 0.02;
+
+        leftFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        leftFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        rightFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        leftRear.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        rightRear.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        resetAngle();
+
+        opMode.sleep(250);
+
+        if (motorDistance >= 0) {
+            // Start driving forward
+            leftFront.setPower(0.25);
+            rightFront.setPower(0.25);
+            leftRear.setPower(0.25);
+            rightRear.setPower(0.25);
+
+            while (true) {
+                // telemetry.addData("leftFront",  "Distance: %3d", leftFront.getCurrentPosition());
+                // telemetry.update();
+
+                correction = checkDirection();
+                leftFront.setPower(power - correction);
+                rightFront.setPower(power + correction);
+                leftRear.setPower(power - correction);
+                rightRear.setPower(power + correction);
+
+                Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+                opMode.telemetry.addData("Gyro Angle", "(%.2f)", angles.firstAngle);
+                opMode.telemetry.addData("Encoders:", "M0: %3d  M1:%3d  M2:%3d  M3:%3d",
+                        leftFront.getCurrentPosition(),
+                        -rightFront.getCurrentPosition(),
+                        -leftRear.getCurrentPosition(),
+                        rightRear.getCurrentPosition());
+                opMode.telemetry.update();
+
+                // Stop driving when Motor Encoder Avg. >= motorDistance
+                if ((leftFront.getCurrentPosition() - rightFront.getCurrentPosition() - leftRear.getCurrentPosition() + rightRear.getCurrentPosition()) / 4.0 >= motorDistance) {
+                    leftFront.setPower(0.0);
+                    rightFront.setPower(0.0);
+                    leftRear.setPower(0.0);
+                    rightRear.setPower(0.0);
+                    break;
+                }
+            }
+        }
+        if (motorDistance < 0) {
+            // Start driving backward
+            leftFront.setPower(-power);
+            rightFront.setPower(-power);
+            leftRear.setPower(-power);
+            rightRear.setPower(-power);
+
+            while (true) {
+                // telemetry.addData("leftFront",  "Distance: %3d", leftFront.getCurrentPosition());
+                // telemetry.update();
+
+                correction = checkDirection();
+                leftFront.setPower(-1 * (power + correction));
+                rightFront.setPower(-1 * (power - correction));
+                leftRear.setPower(-1 * (power + correction));
+                rightRear.setPower(-1 * (power - correction));
+
+                Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+                opMode.telemetry.addData("Gyro Angle", "(%.2f)", angles.firstAngle);
+                opMode.telemetry.addData("Encoders:", "M0: %3d  M1:%3d  M2:%3d  M3:%3d",
+                        leftFront.getCurrentPosition(),
+                        rightFront.getCurrentPosition(),
+                        leftRear.getCurrentPosition(),
+                        rightRear.getCurrentPosition());
+                opMode.telemetry.update();
+
+                // Stop driving when Motor Encoder Avg. <= motorDistance
+                if ((Math.abs(leftFront.getCurrentPosition()) + Math.abs(rightFront.getCurrentPosition()) +
+                        Math.abs(leftRear.getCurrentPosition()) + Math.abs(rightRear.getCurrentPosition())) / -4.0
+                        <= motorDistance) {
+                    leftFront.setPower(0.0);
+                    rightFront.setPower(0.0);
+                    leftRear.setPower(0.0);
+                    rightRear.setPower(0.0);
+                    break;
+                }
+            }
+        }
+    }
+
+    public void strafeLeftIMU(double distance,
+                              double maxDriveSpeed) {
+
+        double correction;
+
+        // Ensure that the opmode is still active
+        if (opMode.opModeIsActive()) {
+            opMode.sleep(500);
+
+            startMotorCounts = leftFront.getCurrentPosition();
+            stopMotorCounts = startMotorCounts - (int) (distance * STRAFE_COUNTS_PER_INCH);
+            drive1 = 0.0;
+            drive2 = maxDriveSpeed;
+            leftPower = Range.clip(drive1 + drive2, -1.0, 1.0);
+            rightPower = Range.clip(drive1 - drive2, -1.0, 1.0);
+            // Send calculated power to wheels
+            leftFront.setPower(rightPower);
+            rightFront.setPower(leftPower);
+            leftRear.setPower(leftPower);
+            rightRear.setPower(rightPower);
+
+            while (true) {
+
+                correction = checkDirection();
+                leftFront.setPower(rightPower - correction);
+                rightFront.setPower(leftPower + correction);
+                leftRear.setPower(leftPower - correction);
+                rightRear.setPower(rightPower + correction);
+
+                Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+                opMode.telemetry.addData("Gyro Angle", "(%.2f)", angles.firstAngle);
+                opMode.telemetry.addData("Encoders:", "M0: %3d  M1:%3d  M2:%3d  M3:%3d",
+                        leftFront.getCurrentPosition(),
+                        -rightFront.getCurrentPosition(),
+                        -leftRear.getCurrentPosition(),
+                        rightRear.getCurrentPosition());
+                opMode.telemetry.update();
+
+                // Stop when the bot has driven the requested distance
+                if (leftFront.getCurrentPosition() <= stopMotorCounts) {
+                    stop();
+                    break;
+                }
+            }
+        }
+    }
+
+    public void strafeRightIMU(double distance, double maxDriveSpeed) {
+        double correction;
+
+        // Ensure that the opmode is still active
+        if (opMode.opModeIsActive()) {
+
+            opMode.sleep(500);
+
+            startMotorCounts = leftFront.getCurrentPosition();
+            stopMotorCounts = startMotorCounts + (int) (distance * STRAFE_COUNTS_PER_INCH);
+            drive1 = 0.0;
+            drive2 = -maxDriveSpeed;
+            leftPower = Range.clip(drive1 + drive2, -1.0, 1.0);
+            rightPower = Range.clip(drive1 - drive2, -1.0, 1.0);
+            // Send calculated power to wheels
+            leftFront.setPower(rightPower);
+            rightFront.setPower(leftPower);
+            leftRear.setPower(leftPower);
+            rightRear.setPower(rightPower);
+
+            while (true) {
+
+                correction = checkDirection();
+                leftFront.setPower(rightPower - correction);
+                rightFront.setPower(leftPower + correction);
+                leftRear.setPower(leftPower - correction);
+                rightRear.setPower(rightPower + correction);
+
+                Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+                opMode.telemetry.addData("Gyro Angle", "(%.2f)", angles.firstAngle);
+                opMode.telemetry.addData("Encoders:", "M0: %3d  M1:%3d  M2:%3d  M3:%3d",
+                        leftFront.getCurrentPosition(),
+                        -rightFront.getCurrentPosition(),
+                        -leftRear.getCurrentPosition(),
+                        rightRear.getCurrentPosition());
+                opMode.telemetry.update();
+
+                // Stop when the bot has driven the requested distance
+                if (leftFront.getCurrentPosition() >= stopMotorCounts) {
+                    stop();
+                    break;
+                }
+            }
+        }
+    }
+
+    public void driveStraightGyroSlidesTurret(double inchesToDrive, double drivePower, double slideHeight, double slidePower, int turretPos, double turretSpeed) {
+
+        double power = drivePower;
+        double motorDistance = (double) (inchesToDrive * WHEEL_COUNTS_PER_INCH);
+        double correction = 0.02;
+
+        leftFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        slideLeft.setTargetPosition((int) slideHeight);
+        slideRight.setTargetPosition((int) -slideHeight);
+        turret.setTargetPosition(turretPos);
+
+        slideLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        slideRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        resetAngle();
+
+        opMode.sleep(250);
+
+        if (motorDistance >= 0) {
+            // Start driving forward
+            leftFront.setPower(0.25);
+            rightFront.setPower(0.25);
+            leftRear.setPower(0.25);
+            rightRear.setPower(0.25);
+
+            // move slides
+            if (slideLeft.getCurrentPosition() < slideHeight) {
+                slideLeft.setPower(slidePower);
+                slideRight.setPower(-slidePower);
+            }
+            else if (slideLeft.getCurrentPosition() > slideHeight) {
+                slideLeft.setPower(-slidePower);
+                slideRight.setPower(slidePower);
+            }
+
+            //move turret
+            if (turret.getCurrentPosition() > turretPos)
+                turret.setPower(-0.2);
+            else if (turret.getCurrentPosition() < turretPos)
+                turret.setPower(0.2);
+
+            while (true) {
+                // telemetry.addData("leftFront",  "Distance: %3d", leftFront.getCurrentPosition());
+                // telemetry.update();
+
+                correction = checkDirection();
+                leftFront.setPower(power - correction);
+                rightFront.setPower(power + correction);
+                leftRear.setPower(power - correction);
+                rightRear.setPower(power + correction);
+
+                //slideLeft.setPower(slidePower);
+                //slideRight.setPower(-slidePower);
+
+                Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+                opMode.telemetry.addData("Gyro Angle", "(%.2f)", angles.firstAngle);
+                opMode.telemetry.addData("Encoders:", "M0: %3d  M1:%3d  M2:%3d  M3:%3d",
+                        leftFront.getCurrentPosition(),
+                        -rightFront.getCurrentPosition(),
+                        -leftRear.getCurrentPosition(),
+                        rightRear.getCurrentPosition());
+                opMode.telemetry.addData("slideHeight", slideLeft.getCurrentPosition());
+                opMode.telemetry.addData("slidePower", slidePower);
+                opMode.telemetry.update();
+
+                /* if ((slidePower > 0 && slideLeft.getCurrentPosition() >= slideHeight) || (slidePower < 0 && slideLeft.getCurrentPosition() <= slideHeight)){
+                    slideLeft.setPower(0.0);
+                    slideRight.setPower(0.0);
+                }
+
+                 */
+
+                // Stop driving when Motor Encoder Avg. >= motorDistance
+                if ((Math.abs(leftFront.getCurrentPosition()) + Math.abs(rightFront.getCurrentPosition()) +
+                        Math.abs(leftRear.getCurrentPosition()) + Math.abs(rightRear.getCurrentPosition()) / 4.0
+                        >= motorDistance)) {
+                    leftFront.setPower(0.0);
+                    rightFront.setPower(0.0);
+                    leftRear.setPower(0.0);
+                    rightRear.setPower(0.0);
+                    break;
+                }
+            }
+        }
+        if (motorDistance < 0) {
+            // Start driving backward
+            leftFront.setPower(-power);
+            rightFront.setPower(-power);
+            leftRear.setPower(-power);
+            rightRear.setPower(-power);
+
+            while (true) {
+                // telemetry.addData("leftFront",  "Distance: %3d", leftFront.getCurrentPosition());
+                // telemetry.update();
+
+                correction = checkDirection();
+                leftFront.setPower(-1 * (power + correction));
+                rightFront.setPower(-1 * (power - correction));
+                leftRear.setPower(-1 * (power + correction));
+                rightRear.setPower(-1 * (power - correction));
+
+                Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+                opMode.telemetry.addData("Gyro Angle", "(%.2f)", angles.firstAngle);
+                opMode.telemetry.addData("Encoders:", "M0: %3d  M1:%3d  M2:%3d  M3:%3d",
+                        leftFront.getCurrentPosition(),
+                        rightFront.getCurrentPosition(),
+                        leftRear.getCurrentPosition(),
+                        rightRear.getCurrentPosition());
+                opMode.telemetry.update();
+
+                // Stop driving when Motor Encoder Avg. <= motorDistance
+                if ((Math.abs(leftFront.getCurrentPosition()) + Math.abs(rightFront.getCurrentPosition()) +
+                        Math.abs(leftRear.getCurrentPosition()) + Math.abs(rightRear.getCurrentPosition()) / 4.0
+                        >= Math.abs(motorDistance))) {
+                    leftFront.setPower(0.0);
+                    rightFront.setPower(0.0);
+                    leftRear.setPower(0.0);
+                    rightRear.setPower(0.0);
+                    break;
+                }
+            }
+        }
+    }
+
+    public void strafeLeftGyroSlidesTurret(double inchesToDrive, double drivePower, double slideHeight, double slidePower, int turretPos, double turretSpeed) {
+
+        double power = drivePower;
+        double motorDistance = (double) (inchesToDrive * WHEEL_COUNTS_PER_INCH);
+        double correction;
+
+        leftFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        slideLeft.setTargetPosition((int) slideHeight);
+        slideRight.setTargetPosition((int) -slideHeight);
+        turret.setTargetPosition(turretPos);
+
+        slideLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        slideRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        opMode.sleep(250);
+
+        // Ensure that the opmode is still active
+        if (opMode.opModeIsActive()) {
+            opMode.sleep(500);
+
+            startMotorCounts = rightFront.getCurrentPosition();
+            stopMotorCounts = startMotorCounts - (int) (inchesToDrive * STRAFE_COUNTS_PER_INCH);
+            drive1 = 0.0;
+            drive2 = power;
+            leftPower = Range.clip(drive1 + drive2, -1.0, 1.0);
+            rightPower = Range.clip(drive1 - drive2, -1.0, 1.0);
+            // Send calculated power to wheels
+            leftFront.setPower(rightPower);
+            rightFront.setPower(leftPower);
+            leftRear.setPower(leftPower);
+            rightRear.setPower(rightPower);
+
+            // move slides
+            if (slideLeft.getCurrentPosition() < slideHeight) {
+                slideLeft.setPower(slidePower);
+                slideRight.setPower(-slidePower);
+            }
+            else if (slideLeft.getCurrentPosition() > slideHeight) {
+                slideLeft.setPower(-slidePower);
+                slideRight.setPower(slidePower);
+            }
+
+            //move turret
+            if (turret.getCurrentPosition() > turretPos)
+                turret.setPower(-0.2);
+            else if (turret.getCurrentPosition() < turretPos)
+                turret.setPower(0.2);
+
+            while (true) {
+
+                correction = checkDirection();
+                leftFront.setPower(rightPower - correction);
+                rightFront.setPower(leftPower + correction);
+                leftRear.setPower(leftPower - correction);
+                rightRear.setPower(rightPower + correction);
+
+                Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+                opMode.telemetry.addData("Gyro Angle", "(%.2f)", angles.firstAngle);
+                opMode.telemetry.addData("Encoders:", "M0: %3d  M1:%3d  M2:%3d  M3:%3d",
+                        leftFront.getCurrentPosition(),
+                        -rightFront.getCurrentPosition(),
+                        -leftRear.getCurrentPosition(),
+                        rightRear.getCurrentPosition());
+                opMode.telemetry.update();
+
+                // Stop when the bot has driven the requested distance
+                if (Math.abs(rightFront.getCurrentPosition()) >= Math.abs(stopMotorCounts)) {
+                    stop();
+                    break;
+                }
+            }
+        }
+    }
+
+    public void strafeRightGyroSlidesTurret(double inchesToDrive, double drivePower, double slideHeight, double slidePower, int turretPos, double turretSpeed) {
+
+        double power = drivePower;
+        double motorDistance = (double) (inchesToDrive * WHEEL_COUNTS_PER_INCH);
+        double correction;
+
+        leftFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        slideLeft.setTargetPosition((int) slideHeight);
+        slideRight.setTargetPosition((int) -slideHeight);
+        turret.setTargetPosition(turretPos);
+
+        slideLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        slideRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        opMode.sleep(250);
+
+        // Ensure that the opmode is still active
+        if (opMode.opModeIsActive()) {
+            opMode.sleep(500);
+
+            startMotorCounts = rightFront.getCurrentPosition();
+            stopMotorCounts = startMotorCounts + (int) (inchesToDrive * STRAFE_COUNTS_PER_INCH);
+            drive1 = 0.0;
+            drive2 = -power;
+            leftPower = Range.clip(drive1 + drive2, -1.0, 1.0);
+            rightPower = Range.clip(drive1 - drive2, -1.0, 1.0);
+            // Send calculated power to wheels
+            leftFront.setPower(rightPower);
+            rightFront.setPower(leftPower);
+            leftRear.setPower(leftPower);
+            rightRear.setPower(rightPower);
+
+            // move slides
+            if (slideLeft.getCurrentPosition() < slideHeight) {
+                slideLeft.setPower(slidePower);
+                slideRight.setPower(-slidePower);
+            }
+            else if (slideLeft.getCurrentPosition() > slideHeight) {
+                slideLeft.setPower(-slidePower);
+                slideRight.setPower(slidePower);
+            }
+
+            //move turret
+            if (turret.getCurrentPosition() > turretPos)
+                turret.setPower(-0.2);
+            else if (turret.getCurrentPosition() < turretPos)
+                turret.setPower(0.2);
+
+            while (true) {
+
+                correction = checkDirection();
+                leftFront.setPower(rightPower - correction);
+                rightFront.setPower(leftPower + correction);
+                leftRear.setPower(leftPower - correction);
+                rightRear.setPower(rightPower + correction);
+
+                Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+                opMode.telemetry.addData("Gyro Angle", "(%.2f)", angles.firstAngle);
+                opMode.telemetry.addData("Encoders:", "M0: %3d  M1:%3d  M2:%3d  M3:%3d",
+                        leftFront.getCurrentPosition(),
+                        -rightFront.getCurrentPosition(),
+                        -leftRear.getCurrentPosition(),
+                        rightRear.getCurrentPosition());
+                opMode.telemetry.update();
+
+                // Stop when the bot has driven the requested distance
+                if (Math.abs(rightFront.getCurrentPosition()) >= Math.abs(stopMotorCounts)) {
+                    stop();
+                    break;
+                }
+            }
+        }
+    }
+
     @Override
     public double getRawExternalHeading() { return 0; }
 
@@ -453,6 +1152,19 @@ public class SampleMecanumDrive extends MecanumDrive {
                 new AngularVelocityConstraint(maxAngularVel),
                 new MecanumVelocityConstraint(maxVel, trackWidth)
         ));
+    }
+
+    public void stop() {
+        if (leftFront != null && rightFront != null && leftRear != null && rightRear != null) {
+            leftFront.setPower(0);
+            rightFront.setPower(0);
+            leftRear.setPower(0);
+            rightRear.setPower(0);
+            this.leftFront.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+            this.rightFront.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+            this.leftRear.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+            this.rightRear.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+        }
     }
 
     public static TrajectoryAccelerationConstraint getAccelerationConstraint(double maxAccel) {
