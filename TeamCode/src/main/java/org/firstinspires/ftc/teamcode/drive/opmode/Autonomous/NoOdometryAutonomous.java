@@ -150,12 +150,13 @@ public class NoOdometryAutonomous extends LinearOpMode {
             drive.moveSlidesToHeightABS(700);
             drive.driveStraightGyroSlidesTurret(16, 0.25, 2000, 0.8, 400, 0.7);
             drive.openClaw();
-            sleep(200);
+            drive.driveStraightGyroSlidesTurret(1, 0.75, 2100, 0.8, -440, 1);
             drive.closeClaw();
-            drive.driveStraightGyroSlidesTurret(37, 0.75, 2100, 0.8, -440, 1);
+            drive.driveStraightGyroSlidesTurret(36.5, 0.75, 2100, 0.8, -440, 1);
             drive.driveStraightGyroSlidesTurret(-1.5, 0.4, 750, 0.8, -440, 0.25);
             drive.openClaw();
-            drive.strafeRightGyroSlidesTurret(30, 0.6, 750, 0.8, -440, 0.25);
+            drive.strafeRightGyroSlidesTurret(28, 0.6, 750, 0.8, -440, 0.25);
+            drive.strafeRightGyroSlidesTurret(2.5, 0.3, 750, 0.8, -440, 0.25);
             drive.closeClaw();
             sleep(400);
             drive.driveStraightGyroSlidesTurret(0, 0, 1500, 1, -440, 0.25);
