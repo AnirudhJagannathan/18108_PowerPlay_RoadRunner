@@ -488,8 +488,8 @@ public class SampleMecanumDrive extends MecanumDrive {
         if ((turretPos >= 850 && turretPower < -0.01) || (turretPos <= -850 && turretPower > 0.01)) {
             turret.setPower(0);
         }
-        else{
-            turret.setPower(-0.3 * turretPower);
+        else {
+            turret.setPower(-0.35 * turretPower);
         }
     }
 

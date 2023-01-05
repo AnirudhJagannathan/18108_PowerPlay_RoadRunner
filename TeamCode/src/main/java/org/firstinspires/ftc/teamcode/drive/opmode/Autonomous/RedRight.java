@@ -19,7 +19,7 @@ import org.openftc.easyopencv.OpenCvCameraRotation;
 import java.util.ArrayList;
 
 @Autonomous
-public class NoOdometryAutonomous extends LinearOpMode {
+public class RedRight extends LinearOpMode {
     OpenCvCamera camera;
     AprilTagDetectionPipeline aprilTagDetectionPipeline;
 
@@ -149,69 +149,68 @@ public class NoOdometryAutonomous extends LinearOpMode {
             drive.closeClaw();
             drive.moveSlidesToHeightABS(700);
             //Close the claw over the cone and raise slides up
-            drive.driveStraightGyroSlidesTurret(16.2, 0.25, 2200, 0.8, 400, 0.7);
+            drive.driveStraightGyroSlidesTurret(15.75, 0.25, 2200, 0.8, 400, 0.7);
             //Drive to the small junction and rotate turret
             drive.openClaw();
             //Drop cone
             drive.strafeRightGyroSlidesTurret(1, 0.75, 2200,0.8, 400, 0.7);
-            drive.driveStraightGyroSlidesTurret(1, 0.75, 2100, 0.8, -440, 1);
+            drive.driveStraightGyroSlidesTurret(1, 0.75, 2100, 0.8, -400, 1);
             drive.closeClaw();
-            drive.driveStraightGyroSlidesTurret(36, 0.75, 2100, 0.8, -440, 1);
+            drive.driveStraightGyroSlidesTurret(36, 0.75, 2100, 0.8, -400, 1);
             sleep(200);
-            drive.driveStraightGyroSlidesTurret(-3, 0.4, 750, 0.8, -440, 0.25);
+            drive.driveStraightGyroSlidesTurret(-3, 0.4, 750, 0.8, -400, 0.25);
             //Move forward and push signal sleeve out of the way
             drive.openClaw();
-            drive.strafeRightGyroSlidesTurret(28, 0.7, 750, 0.8, -440, 0.25);
-            drive.strafeRightGyroSlidesTurret(3, 0.3, 750, 0.8, -440, 0.25);
+            drive.strafeRightGyroSlidesTurret(28, 0.7, 750, 0.8, -400, 0.25);
+            drive.strafeRightGyroSlidesTurret(2.2, 0.3, 750, 0.8, -400, 0.25);
             drive.closeClaw();
             //Move to cone stack and grab cone
             sleep(200);
-            drive.driveStraightGyroSlidesTurret(0, 0, 1500, 1, -440, 0.25);
-            drive.strafeLeftGyroSlidesTurret(12.5, 0.6, 2050, 0.5, -880, 0.25);
-            drive.driveStraightGyroSlidesTurret(-2.25, 0.3, 2050, 0.5, -880, 0.25);
+            drive.driveStraightGyroSlidesTurret(0, 0, 1500, 1, -400, 0.25);
+            drive.strafeLeftGyroSlidesTurret(11, 0.6, 2050, 0.5, -840, 0.25);
+            drive.driveStraightGyroSlidesTurret(-3.5, 0.3, 2050, 0.5, -840, 0.25);
             drive.openClaw();
             sleep(200);
             //Drop cone in the other low junction
-            drive.driveStraightGyroSlidesTurret(2.25, 0.3, 2050, 0.5, -440, 0.25);
-            drive.strafeRightGyroSlidesTurret(10, 0.7, 750, 0.8, -440, 0.25);
-            drive.strafeRightGyroSlidesTurret(3.25, 0.3, 650, 0.8, -440, 0.25);
+            drive.driveStraightGyroSlidesTurret(2.25, 0.3, 2050, 0.5, -400, 0.25);
+            drive.strafeRightGyroSlidesTurret(9.5, 0.7, 750, 0.8, -400, 0.25);
+            drive.strafeRightGyroSlidesTurret(3.75, 0.3, 650, 0.8, -400, 0.25);
             drive.closeClaw();
             //Move to cone stack and grab cone
             sleep(200);
-            drive.driveStraightGyroSlidesTurret(0, 0, 1500, 1, -440, 0.25);
-            drive.strafeLeftGyroSlidesTurret(39.5, 0.85, 3650, 0.5, -880, 0.25);
-            sleep(350);
-            drive.driveStraightGyroSlidesTurret(-2, 0.4, 3650, 0.5, -880, 0.25);
+            drive.driveStraightGyroSlidesTurret(0, 0, 1500, 1, -400, 0.25);
+            drive.strafeLeftGyroSlidesTurret(41, 0.65, 3650, 0.5, -840, 0.25);
+            sleep(250);
+            drive.driveStraightGyroSlidesTurret(-3, 0.4, 3650, 0.5, -840, 0.25);
             drive.openClaw();
             sleep(300);
             //Move to the medium junction and drop the cone
-            drive.driveStraightGyroSlidesTurret(4, 0.3, 2100, 0.5, -440, 0.25);
-            drive.strafeRightGyroSlidesTurret(36, 0.7, 500, 0.8, -440, 0.25);
-            drive.strafeRightGyroSlidesTurret(4, 0.3, 400, 0.8, -440, 0.25);
+            drive.driveStraightGyroSlidesTurret(3, 0.3, 2100, 0.5, -400, 0.25);
+            drive.strafeRightGyroSlidesTurret(38, 0.7, 700, 0.8, -400, 0.25);
+            drive.strafeRightGyroSlidesTurret(4, 0.3, 500, 0.8, -400, 0.25);
             drive.closeClaw();
             sleep(200);
             //Grab another cone
-            drive.driveStraightGyroSlidesTurret(0, 0, 1500, 1, -440, 0.25);
-            drive.strafeLeftGyroSlidesTurret(38, 0.65, 4850, 0.75, 0, 0.25);
-            sleep(400);
-            drive.driveStraightGyroSlidesTurret(1.25, 0.2, 4850, 0.75, 0, 0.25);
+            drive.driveStraightGyroSlidesTurret(0, 0, 1500, 1, -400, 0.25);
+            drive.strafeLeftGyroSlidesTurret(40.5, 0.5, 5050, 0.75, -40, 0.25);
+            sleep(200);
+            drive.driveStraightGyroSlidesTurret(1.25, 0.15, 5050, 0.75, -40, 0.25);
             drive.openClaw();
+            sleep(200);
             //Drop the cone in the high junction
+            drive.driveStraightGyroSlidesTurret(-3, 0.2, 4500, 0.8, 20, 0.25);
 
             if(tagOfInterest.id == LEFT)
-            {
-
-            } //Move to square three
+                drive.strafeLeftGyroSlidesTurret(9, 0.3, 750, 0.8, 20, 0.25);
+            //Move to square one
 
             else if(tagOfInterest.id == MIDDLE)
-            {
-
-            } //Move to square two
+                drive.strafeRightGyroSlidesTurret(12, 0.3, 750, 0.8, 20, 0.25);
+            //Move to square two
 
             else if(tagOfInterest.id == RIGHT)
-            {
-
-            } //Stay in that square
+                drive.strafeRightGyroSlidesTurret(38, 1.0, 750, 0.8, 20, 0.25);
+            //Move to square three
         }
     }
 
