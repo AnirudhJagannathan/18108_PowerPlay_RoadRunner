@@ -56,7 +56,7 @@ public class RedRight extends LinearOpMode {
             @Override
             public void onOpened()
             {
-                camera.startStreaming(800,448, OpenCvCameraRotation.UPRIGHT);
+                camera.startStreaming(1280,720, OpenCvCameraRotation.UPRIGHT);
             }
 
             @Override
@@ -149,52 +149,52 @@ public class RedRight extends LinearOpMode {
             drive.closeClaw();
             drive.moveSlidesToHeightABS(700);
             //Close the claw over the cone and raise slides up
-            drive.driveStraightGyroSlidesTurret(15.75, 0.25, 2200, 0.8, 400, 0.7);
+            drive.driveStraightGyroSlidesTurret(15.25, 0.25, 2200, 0.8, 400, 0.7);
             //Drive to the small junction and rotate turret
             drive.openClaw();
             //Drop cone
             drive.strafeRightGyroSlidesTurret(1, 0.75, 2200,0.8, 400, 0.7);
-            drive.driveStraightGyroSlidesTurret(1, 0.75, 2100, 0.8, -400, 1);
+            drive.driveStraightGyroSlidesTurret(1.7, 0.75, 2100, 0.8, -400, 1);
             drive.closeClaw();
-            drive.driveStraightGyroSlidesTurret(36, 0.75, 2100, 0.8, -400, 1);
+            drive.driveStraightGyroSlidesTurret(36.9, 0.65, 2100, 0.8, -400, 1);
             sleep(200);
             drive.driveStraightGyroSlidesTurret(-3, 0.4, 750, 0.8, -400, 0.25);
             //Move forward and push signal sleeve out of the way
             drive.openClaw();
-            drive.strafeRightGyroSlidesTurret(28, 0.7, 750, 0.8, -400, 0.25);
-            drive.strafeRightGyroSlidesTurret(2.2, 0.3, 750, 0.8, -400, 0.25);
+            drive.strafeRightGyroSlidesTurret(27.2, 0.7, 750, 0.8, -400, 0.25);
+            drive.strafeRightGyroSlidesTurret(2.72, 0.3, 750, 0.8, -400, 0.25);
             drive.closeClaw();
             //Move to cone stack and grab cone
             sleep(200);
             drive.driveStraightGyroSlidesTurret(0, 0, 1500, 1, -400, 0.25);
-            drive.strafeLeftGyroSlidesTurret(11, 0.6, 2050, 0.5, -840, 0.25);
-            drive.driveStraightGyroSlidesTurret(-3.5, 0.3, 2050, 0.5, -840, 0.25);
+            drive.strafeLeftGyroSlidesTurret(10.03, 0.6, 2150, 0.5, -840, 0.25);
+            drive.driveStraightGyroSlidesTurret(-2.75, 0.3, 2250, 0.5, -840, 0.25);
             drive.openClaw();
             sleep(200);
             //Drop cone in the other low junction
-            drive.driveStraightGyroSlidesTurret(2.25, 0.3, 2050, 0.5, -400, 0.25);
-            drive.strafeRightGyroSlidesTurret(9.5, 0.7, 750, 0.8, -400, 0.25);
-            drive.strafeRightGyroSlidesTurret(3.75, 0.3, 650, 0.8, -400, 0.25);
+            drive.driveStraightGyroSlidesTurret(1.75, 0.3, 2050, 0.5, -400, 0.25);
+            drive.strafeRightGyroSlidesTurret(8.1, 0.7, 750, 0.8, -400, 0.25);
+            drive.strafeRightGyroSlidesTurret(3.8, 0.3, 650, 0.8, -400, 0.25);
             drive.closeClaw();
             //Move to cone stack and grab cone
             sleep(200);
             drive.driveStraightGyroSlidesTurret(0, 0, 1500, 1, -400, 0.25);
-            drive.strafeLeftGyroSlidesTurret(41, 0.65, 3650, 0.5, -840, 0.25);
+            drive.strafeLeftGyroSlidesTurret(38.7, 0.65, 3530, 0.5, -840, 0.25);
             sleep(250);
-            drive.driveStraightGyroSlidesTurret(-3, 0.4, 3650, 0.5, -840, 0.25);
+            drive.driveStraightGyroSlidesTurret(-2.5, 0.4, 3530, 0.5, -840, 0.25);
             drive.openClaw();
             sleep(300);
             //Move to the medium junction and drop the cone
-            drive.driveStraightGyroSlidesTurret(3, 0.3, 2100, 0.5, -400, 0.25);
-            drive.strafeRightGyroSlidesTurret(38, 0.7, 700, 0.8, -400, 0.25);
-            drive.strafeRightGyroSlidesTurret(4, 0.3, 500, 0.8, -400, 0.25);
+            drive.driveStraightGyroSlidesTurret(2.5, 0.3, 2100, 0.5, -400, 0.25);
+            drive.strafeRightGyroSlidesTurret(36, 0.7, 700, 0.8, -400, 0.25);
+            drive.strafeRightGyroSlidesTurret(3.25, 0.3, 500, 0.8, -400, 0.25);
             drive.closeClaw();
             sleep(200);
             //Grab another cone
             drive.driveStraightGyroSlidesTurret(0, 0, 1500, 1, -400, 0.25);
-            drive.strafeLeftGyroSlidesTurret(40.5, 0.5, 5050, 0.75, -40, 0.25);
+            drive.strafeLeftGyroSlidesTurret(42, 0.5, 5050, 0.75, 0, 0.25);
             sleep(200);
-            drive.driveStraightGyroSlidesTurret(1.25, 0.15, 5050, 0.75, -40, 0.25);
+            drive.driveStraightGyroSlidesTurret(1.25, 0.15, 5050, 0.75, 0, 0.25);
             drive.openClaw();
             sleep(200);
             //Drop the cone in the high junction
@@ -205,11 +205,11 @@ public class RedRight extends LinearOpMode {
             //Move to square one
 
             else if(tagOfInterest.id == MIDDLE)
-                drive.strafeRightGyroSlidesTurret(12, 0.3, 750, 0.8, 20, 0.25);
+                drive.strafeRightGyroSlidesTurret(13, 0.5, 750, 0.8, 20, 0.25);
             //Move to square two
 
             else if(tagOfInterest.id == RIGHT)
-                drive.strafeRightGyroSlidesTurret(38, 1.0, 750, 0.8, 20, 0.25);
+                drive.strafeRightGyroSlidesTurret(40, 1.0, 750, 0.8, 20, 0.25);
             //Move to square three
         }
     }
