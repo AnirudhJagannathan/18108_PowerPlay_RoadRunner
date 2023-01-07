@@ -81,7 +81,7 @@ public class SampleMecanumDrive extends MecanumDrive {
     public static final double INCREMENT   = 0.05;     // amount to slew servo each CYCLE_MS cycle
     public static final int    CYCLE_MS    =   30;     // period of each cycle
 
-    public static final double AMAX_POS = 0.60;     // Maximum rotational position ---- Phil Claw: 1.4; GoBilda Claw: 1.4
+    public static final double AMAX_POS = 0.55;     // Maximum rotational position ---- Phil Claw: 1.4; GoBilda Claw: 1.4
     public static final double AMIN_POS = 0.25;     // Minimum rotational position ---- Phil Claw: 0.7; GoBilda Claw: 0.61
     public double  Aposition = AMIN_POS;                 // Start position
 
@@ -321,6 +321,11 @@ public class SampleMecanumDrive extends MecanumDrive {
 
         slideLeft.setPower(-0.5);
         slideRight.setPower(0.5);
+    }
+
+    public void resetSlides() {
+        slideLeft.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        slideRight.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
     }
 
     public void turn(double angle) {
