@@ -2,6 +2,10 @@ package org.firstinspires.ftc.teamcode.drive;
 
 import androidx.annotation.NonNull;
 
+import android.app.Activity;
+import android.graphics.Color;
+
+import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.acmerobotics.dashboard.config.Config;
@@ -24,12 +28,17 @@ import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
+import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.hardware.configuration.typecontainers.MotorConfigurationType;
 import com.qualcomm.robotcore.util.Range;
+
+import org.firstinspires.ftc.teamcode.drive.opmode.Autonomous.StageSwitchingPipeline;
+import org.firstinspires.ftc.teamcode.drive.opmode.Autonomous.StageSwitchingPipelineLeftSide;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
@@ -57,6 +66,7 @@ import static org.firstinspires.ftc.teamcode.drive.DriveConstants.kStatic;
 import static org.firstinspires.ftc.teamcode.drive.DriveConstants.kV;
 
 import android.util.Log;
+import android.view.View;
 
 /*
  * Simple mecanum drive hardware implementation for REV hardware.
@@ -81,7 +91,7 @@ public class SampleMecanumDrive extends MecanumDrive {
     public static final double INCREMENT   = 0.05;     // amount to slew servo each CYCLE_MS cycle
     public static final int    CYCLE_MS    =   30;     // period of each cycle
 
-    public static final double AMAX_POS = 0.55;     // Maximum rotational position ---- Phil Claw: 1.4; GoBilda Claw: 1.4
+    public static final double AMAX_POS = 0.50;     // Maximum rotational position ---- Phil Claw: 1.4; GoBilda Claw: 1.4
     public static final double AMIN_POS = 0.25;     // Minimum rotational position ---- Phil Claw: 0.7; GoBilda Claw: 0.61
     public double  Aposition = AMIN_POS;                 // Start position
 
@@ -108,6 +118,9 @@ public class SampleMecanumDrive extends MecanumDrive {
     private Servo Claw;
     private List<DcMotorEx> motors;
 
+    public ColorSensor colorSensor;
+    public NormalizedRGBA colors;
+
     private BNO055IMU imu;
     public BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
     private VoltageSensor batteryVoltageSensor;
@@ -128,10 +141,20 @@ public class SampleMecanumDrive extends MecanumDrive {
     public int     rightFrontTarget = 0;
     public int     leftRearTarget   = 0;
     public int     rightRearTarget  = 0;
-    public int startMotorCounts = 0;
-    public int stopMotorCounts = 0;
+    public double startMotorCounts = 0;
+    public double stopMotorCounts = 0;
 
-    static final double     STRAFE_COUNTS_PER_INCH  = 47.4369230781;
+    public boolean aCurrentState = false;
+    public boolean xCurrentState = false;
+    public boolean yCurrentState = false;
+    public boolean bCurrentState = false;
+
+    public boolean aLastState = false;
+    public boolean xLastState = false;
+    public boolean yLastState = false;
+    public boolean bLastState = false;
+
+    static final double     STRAFE_COUNTS_PER_INCH  = 45.178235; //47.4369230781 non acceleration
     static final double     WHEEL_COUNTS_PER_INCH   = 142.3636363625;
 
     public SampleMecanumDrive(LinearOpMode opMode, HardwareMap hardwareMap) {
@@ -175,6 +198,8 @@ public class SampleMecanumDrive extends MecanumDrive {
         leftRear = hardwareMap.get(DcMotorEx.class, "backLeft");
         rightRear = hardwareMap.get(DcMotorEx.class, "backRight");
         rightFront = hardwareMap.get(DcMotorEx.class, "frontRight");
+
+        colorSensor = hardwareMap.get(ColorSensor.class, "colorSensor");
 
         slideLeft = hardwareMap.get(DcMotorEx.class, "slideLeft");
         slideRight = hardwareMap.get(DcMotorEx.class, "slideRight");
@@ -294,38 +319,62 @@ public class SampleMecanumDrive extends MecanumDrive {
         return correction;
     }
 
-    public void moveTurretToPositionABS(int motorTurretEncoderCounts) {
-        int turretHalfRotationCounts = 4000;  // This number is just a guess, need to check on B Bot
-
-        turret.setTargetPosition(motorTurretEncoderCounts);
-        turret.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
-        if (Math.abs(motorTurretEncoderCounts) < turretHalfRotationCounts) {
-            if (turret.getCurrentPosition() < motorTurretEncoderCounts) {
-                turret.setPower(0.1);
-            } else {
-                turret.setPower(-0.1);
-            }
-        }
-    }
-
-    public void moveSlidesToHeightABS(int motorSlideEncoderCounts) {
+    public void moveSlidesToHeightABS(int motorSlideEncoderCounts, double slidePower) {
         double currentTime = runtime.time();
+        boolean up = false;
+        boolean down = false;
 
         // opMode.sleep(500);
 
-        slideLeft.setTargetPosition(motorSlideEncoderCounts);
-        slideRight.setTargetPosition(-motorSlideEncoderCounts);
+        /* slideLeft.setTargetPosition(motorSlideEncoderCounts);
+        slideRight.setTargetPosition(motorSlideEncoderCounts);
 
         slideLeft.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
         slideRight.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
 
         slideLeft.setPower(-0.5);
         slideRight.setPower(0.5);
+
+         */
+
+        // move slides
+        if (slideLeft.getCurrentPosition() < motorSlideEncoderCounts) {
+            slideLeft.setPower(-slidePower);
+            slideRight.setPower(-slidePower);
+            up = true;
+        }
+        else if (slideLeft.getCurrentPosition() > motorSlideEncoderCounts) {
+            slideLeft.setPower(slidePower);
+            slideRight.setPower(slidePower);
+            down =  true;
+        }
+
+        while (true) {
+            if (up && (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2 > motorSlideEncoderCounts) {
+                slideLeft.setPower(0.0);
+                slideRight.setPower(0.0);
+                break;
+            }
+            else if (down && (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2 < motorSlideEncoderCounts) {
+                slideLeft.setPower(0.0);
+                slideRight.setPower(0.0);
+                break;
+            }
+        }
     }
 
     public void resetSlides() {
         slideLeft.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         slideRight.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+
+        slideLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        slideRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+    }
+
+    public void resetTurret() {
+        turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        turret.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+
     }
 
     public void turn(double angle) {
@@ -378,8 +427,8 @@ public class SampleMecanumDrive extends MecanumDrive {
         for (DcMotorEx motor : motors) {
             motor.setMode(runMode);
         }
-        slideLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        slideRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        slideLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        slideRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         turret.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
 
@@ -418,7 +467,7 @@ public class SampleMecanumDrive extends MecanumDrive {
                     VY_WEIGHT * drivePower.getY(),
                     OMEGA_WEIGHT * drivePower.getHeading()
             ).div(denom);
-        }
+        }                                                                   
 
         setDrivePower(vel);
     }
@@ -428,15 +477,20 @@ public class SampleMecanumDrive extends MecanumDrive {
 
         //Limit how high the slides can go
 
-        if(((slideLeft.getCurrentPosition()) > 5000 && slidePower < 0) ||
-                ((slideLeft.getCurrentPosition()) < 100 && slidePower > 0)){
+        if(((slideLeft.getCurrentPosition()) > 3650 && slidePower < 0) ||
+                ((slideLeft.getCurrentPosition()) < -150 && slidePower > 0)) {
             slideLeft.setPower(0);
             slideRight.setPower(0);
         }
-        else{
-            slideLeft.setPower(-0.85 * slidePower);
-            slideRight.setPower(0.85 * slidePower);
+        else if (slidePower > 0) {
+            slideLeft.setPower(slidePower);
+            slideRight.setPower(slidePower);
         }
+        else {
+            slideLeft.setPower(slidePower);
+            slideRight.setPower(slidePower);
+        }
+
         opMode.telemetry.addData("slidePower", slidePower);
         opMode.telemetry.addData("slideLeftHeight", slideLeft.getCurrentPosition());
         opMode.telemetry.addData("slideRightHeight", slideRight.getCurrentPosition());
@@ -494,8 +548,49 @@ public class SampleMecanumDrive extends MecanumDrive {
             turret.setPower(0);
         }
         else {
-            turret.setPower(-0.35 * turretPower);
+            turret.setPower(-0.45 * turretPower);
         }
+    }
+
+    public void moveTurretToPosition(int motorTurretEncoderCounts) {
+        int turretHalfRotationCounts = 880;  // This number is just a guess, need to check on B Bot
+
+        turret.setTargetPosition(motorTurretEncoderCounts);
+        turret.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
+        if (Math.abs(motorTurretEncoderCounts) < turretHalfRotationCounts) {
+            if (turret.getCurrentPosition() < motorTurretEncoderCounts) {
+                turret.setPower(0.50);
+            } else {
+                turret.setPower(-0.50);
+            }
+        }
+
+        else if (turret.getCurrentPosition() > 0 && motorTurretEncoderCounts == 880)
+            turret.setPower(0.50);
+        else if (turret.getCurrentPosition() < 0 && motorTurretEncoderCounts == 880) {
+            turret.setTargetPosition(-motorTurretEncoderCounts);
+            turret.setPower(-0.50);
+        }
+    }
+
+    public void moveTurretToPositionTeleOP() {
+        aLastState = aCurrentState;
+        aCurrentState = opMode.gamepad2.a;
+        xLastState = xCurrentState;
+        xCurrentState = opMode.gamepad2.x;
+        yLastState = yCurrentState;
+        yCurrentState = opMode.gamepad2.y;
+        bLastState = bCurrentState;
+        bCurrentState = opMode.gamepad2.b;
+
+        if (aCurrentState && !aLastState)
+            moveTurretToPosition(880);
+        if (xCurrentState && !xLastState)
+            moveTurretToPosition(440);
+        if (bCurrentState && !bLastState)
+            moveTurretToPosition(-440);
+        if (yCurrentState && !yLastState)
+            moveTurretToPosition(0);
     }
 
     public void openClaw() {
@@ -556,6 +651,140 @@ public class SampleMecanumDrive extends MecanumDrive {
         leftRear.setPower(v1);
         rightRear.setPower(v2);
         rightFront.setPower(v3);
+    }
+
+    public void strafeIMUJunction(boolean leftOrRight,
+                                  double maxDriveSpeed, StageSwitchingPipeline pipeline) { //True = left, False = right
+
+        int valMid;
+        double correction;
+
+        leftFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        resetAngle();
+
+        // Ensure that the opmode is still active
+        if (opMode.opModeIsActive()) {
+            opMode.sleep(500);
+
+            drive1 = 0.0;
+            if (leftOrRight){
+                drive2 = maxDriveSpeed;
+            }
+            else {
+                drive2 = -maxDriveSpeed;
+            }
+            leftPower = Range.clip(drive1 + drive2, -1.0, 1.0);
+            rightPower = Range.clip(drive1 - drive2, -1.0, 1.0);
+            // Send calculated power to wheels
+            leftFront.setPower(rightPower);
+            rightFront.setPower(leftPower);
+            leftRear.setPower(leftPower);
+            rightRear.setPower(rightPower);
+
+            leftFront.setPower(leftPower);
+            rightFront.setPower(rightPower);
+            leftRear.setPower(rightPower);
+            rightRear.setPower(leftPower);
+
+            while (true) {
+                correction = checkDirection();
+                valMid = pipeline.getValMid();
+
+                leftFront.setPower(rightPower - correction);
+                rightFront.setPower(leftPower + correction);
+                leftRear.setPower(leftPower - correction);
+                rightRear.setPower(rightPower + correction);
+
+
+                if (valMid > 100) {
+                    stop();
+                    break;
+                }
+
+                opMode.telemetry.addData("valMid",  pipeline.getValMid());
+                opMode.telemetry.addData("Height", pipeline.getRows());
+                opMode.telemetry.addData("Width", pipeline.getCols());
+
+                opMode.telemetry.update();
+            }
+        }
+    }
+
+    public void strafeIMUJunctionLeft(boolean leftOrRight,
+                                  double maxDriveSpeed, StageSwitchingPipelineLeftSide pipeline) { //True = left, False = right
+
+        int valMid;
+        double correction;
+
+        leftFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        resetAngle();
+
+        // Ensure that the opmode is still active
+        if (opMode.opModeIsActive()) {
+            opMode.sleep(500);
+
+            drive1 = 0.0;
+            if (leftOrRight){
+                drive2 = maxDriveSpeed;
+            }
+            else {
+                drive2 = -maxDriveSpeed;
+            }
+            leftPower = Range.clip(drive1 + drive2, -1.0, 1.0);
+            rightPower = Range.clip(drive1 - drive2, -1.0, 1.0);
+            // Send calculated power to wheels
+            leftFront.setPower(rightPower);
+            rightFront.setPower(leftPower);
+            leftRear.setPower(leftPower);
+            rightRear.setPower(rightPower);
+
+            leftFront.setPower(leftPower);
+            rightFront.setPower(rightPower);
+            leftRear.setPower(rightPower);
+            rightRear.setPower(leftPower);
+
+            while (true) {
+                correction = checkDirection();
+                valMid = pipeline.getValMid();
+
+                leftFront.setPower(rightPower - correction);
+                rightFront.setPower(leftPower + correction);
+                leftRear.setPower(leftPower - correction);
+                rightRear.setPower(rightPower + correction);
+
+
+                if (valMid > 100) {
+                    stop();
+                    break;
+                }
+
+                opMode.telemetry.addData("valMid",  pipeline.getValMid());
+                opMode.telemetry.addData("Height", pipeline.getRows());
+                opMode.telemetry.addData("Width", pipeline.getCols());
+
+                opMode.telemetry.update();
+            }
+        }
+    }
+
+    public void lineAlign(boolean fOrB) {
+
     }
 
     public void turnTankGyro(double angleToTurn, double anglePower) {
@@ -653,6 +882,7 @@ public class SampleMecanumDrive extends MecanumDrive {
                 opMode.telemetry.update();
             }
         }
+        resetAngle();
     }
 
     public void driveStraightGyro(double inchesToDrive, double drivePower) {
@@ -846,6 +1076,33 @@ public class SampleMecanumDrive extends MecanumDrive {
         }
     }
 
+    public void moveSlidesAndTurret(double slideHeight, double slidePower, int turretPos, double turretSpeed) {
+
+        slideLeft.setTargetPosition((int) slideHeight);
+        slideRight.setTargetPosition((int) slideHeight);
+        turret.setTargetPosition(turretPos);
+
+        slideLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        slideRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        // move slides
+        if (slideLeft.getCurrentPosition() < slideHeight) {
+            slideLeft.setPower(slidePower);
+            slideRight.setPower(slidePower);
+        }
+        else if (slideLeft.getCurrentPosition() > slideHeight) {
+            slideLeft.setPower(-slidePower);
+            slideRight.setPower(-slidePower);
+        }
+
+        //move turret
+        if (turret.getCurrentPosition() > turretPos)
+            turret.setPower(turretSpeed);
+        else if (turret.getCurrentPosition() < turretPos)
+            turret.setPower(turretSpeed);
+    }
+
     public void driveStraightGyroSlidesTurret(double inchesToDrive, double drivePower, double slideHeight, double slidePower, int turretPos, double turretSpeed) {
 
         double power = drivePower;
@@ -862,7 +1119,7 @@ public class SampleMecanumDrive extends MecanumDrive {
         rightRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         slideLeft.setTargetPosition((int) slideHeight);
-        slideRight.setTargetPosition((int) -slideHeight);
+        slideRight.setTargetPosition((int) slideHeight);
         turret.setTargetPosition(turretPos);
 
         slideLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
@@ -882,11 +1139,11 @@ public class SampleMecanumDrive extends MecanumDrive {
             // move slides
             if (slideLeft.getCurrentPosition() < slideHeight) {
                 slideLeft.setPower(slidePower);
-                slideRight.setPower(-slidePower);
+                slideRight.setPower(slidePower);
             }
             else if (slideLeft.getCurrentPosition() > slideHeight) {
                 slideLeft.setPower(-slidePower);
-                slideRight.setPower(slidePower);
+                slideRight.setPower(-slidePower);
             }
 
             //move turret
@@ -922,9 +1179,7 @@ public class SampleMecanumDrive extends MecanumDrive {
                 /* if ((slidePower > 0 && slideLeft.getCurrentPosition() >= slideHeight) || (slidePower < 0 && slideLeft.getCurrentPosition() <= slideHeight)){
                     slideLeft.setPower(0.0);
                     slideRight.setPower(0.0);
-                }
-
-                 */
+                } */
 
                 // Stop driving when Motor Encoder Avg. >= motorDistance
                 if ((Math.abs(leftFront.getCurrentPosition()) + Math.abs(rightFront.getCurrentPosition()) +
@@ -976,6 +1231,873 @@ public class SampleMecanumDrive extends MecanumDrive {
                 }
             }
         }
+    }
+
+    public void accelStraightGyroSlidesTurret(double inchesToDrive, double drivePower, double slideHeight, double slidePower, int turretPos, double turretSpeed) {
+
+        double power = drivePower;
+        double motorDistance = (double) (inchesToDrive * WHEEL_COUNTS_PER_INCH);
+        double correction = 0.02;
+        boolean state1 = true;
+        boolean state2 = true;
+        boolean up = false;
+        boolean down = false;
+        boolean left = false;
+        boolean right = false;
+
+
+
+        leftFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        /* slideLeft.setTargetPosition((int) slideHeight);
+        slideRight.setTargetPosition((int) slideHeight);
+        turret.setTargetPosition(turretPos);
+
+        slideLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        slideRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+         */
+        resetAngle();
+
+        opMode.sleep(250);
+
+        // move slides
+        if (slideLeft.getCurrentPosition() < slideHeight) {
+            slideLeft.setPower(-slidePower);
+            slideRight.setPower(-slidePower);
+            up = true;
+        }
+        else if (slideLeft.getCurrentPosition() > slideHeight) {
+            slideLeft.setPower(slidePower);
+            slideRight.setPower(slidePower);
+            down = true;
+        }
+
+        //move turret
+        if (turret.getCurrentPosition() > turretPos) {
+            turret.setPower(-turretSpeed);
+            right = true;
+        }
+        else if (turret.getCurrentPosition() < turretPos) {
+            turret.setPower(turretSpeed);
+            left = true;
+        }
+
+        if (motorDistance > 0) {
+
+            while (true) {
+                // telemetry.addData("leftFront",  "Distance: %3d", leftFront.getCurrentPosition());
+                // telemetry.update();
+
+                if ((Math.abs(leftFront.getCurrentPosition()) + Math.abs(rightFront.getCurrentPosition()) +
+                        Math.abs(leftRear.getCurrentPosition()) + Math.abs(rightRear.getCurrentPosition())) / 4.0 < (motorDistance / 6) && state1)
+                {
+                    for (double i = 0; i <= 1; i += .0625) {
+                        correction = checkDirection();
+                        leftFront.setPower(i * (power - correction));
+                        rightFront.setPower(i * (power + correction));
+                        leftRear.setPower(i * (power - correction));
+                        rightRear.setPower(i * (power + correction));
+                        state1 = false;
+                        if (up && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  >= slideHeight) {
+                            slideLeft.setPower(0.0);
+                            slideRight.setPower(0.0);
+                        }
+                        if (down && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  <= slideHeight) {
+                            slideLeft.setPower(0.0);
+                            slideRight.setPower(0.0);
+                        }
+                        if (left && (double) turret.getCurrentPosition() >= turretPos)
+                            turret.setPower(0.0);
+                        if (right && (double) turret.getCurrentPosition() <= turretPos)
+                            turret.setPower(0.0);
+                    }
+                }
+
+                correction = checkDirection();
+                leftFront.setPower(power - correction);
+                rightFront.setPower(power + correction);
+                leftRear.setPower(power - correction);
+                rightRear.setPower(power + correction);
+
+                if (up && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  >= slideHeight) {
+                    slideLeft.setPower(0.0);
+                    slideRight.setPower(0.0);
+                }
+                if (down && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  <= slideHeight) {
+                    slideLeft.setPower(0.0);
+                    slideRight.setPower(0.0);
+                }
+                if (left && (double) turret.getCurrentPosition() >= turretPos)
+                    turret.setPower(0.0);
+                if (right && (double) turret.getCurrentPosition() <= turretPos)
+                    turret.setPower(0.0);
+
+                Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+                opMode.telemetry.addData("Gyro Angle", "(%.2f)", angles.firstAngle);
+                opMode.telemetry.addData("Encoders:", "M0: %3d  M1:%3d  M2:%3d  M3:%3d",
+                        leftFront.getCurrentPosition(),
+                        -rightFront.getCurrentPosition(),
+                        -leftRear.getCurrentPosition(),
+                        rightRear.getCurrentPosition());
+                opMode.telemetry.addData("slideHeight", (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2);
+                opMode.telemetry.addData("slidePower", slidePower);
+                opMode.telemetry.update();
+
+                if ((Math.abs(leftFront.getCurrentPosition()) + Math.abs(rightFront.getCurrentPosition()) +
+                        Math.abs(leftRear.getCurrentPosition()) + Math.abs(rightRear.getCurrentPosition())) / 4.0 > ((4.0/6) * Math.abs(motorDistance)) && state2)
+                {
+                    opMode.telemetry.addData("turretPos", turret.getCurrentPosition());
+                    opMode.telemetry.update();
+                    for (double j = 1; j >= 0; j -= .0625) {
+                        correction = checkDirection();
+                        leftFront.setPower(j * (power - correction));
+                        rightFront.setPower(j * (power + correction));
+                        leftRear.setPower(j * (power - correction));
+                        rightRear.setPower(j * (power + correction));
+                        state2 = false;
+                        if ((double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  >= slideHeight) {
+                            slideLeft.setPower(0.0);
+                            slideRight.setPower(0.0);
+                        }
+                        if (down && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  <= slideHeight) {
+                            slideLeft.setPower(0.0);
+                            slideRight.setPower(0.0);
+                        }
+                        if (left && (double) turret.getCurrentPosition() >= turretPos)
+                            turret.setPower(0.0);
+                        if (right && (double) turret.getCurrentPosition() <= turretPos)
+                            turret.setPower(0.0);
+                    }
+                }
+
+                // Stop driving when Motor Encoder Avg. >= motorDistance
+                if ((Math.abs(leftFront.getCurrentPosition()) + Math.abs(rightFront.getCurrentPosition()) +
+                        Math.abs(leftRear.getCurrentPosition()) + Math.abs(rightRear.getCurrentPosition()) / 4.0
+                        >= motorDistance)) {
+                    leftFront.setPower(0.0);
+                    rightFront.setPower(0.0);
+                    leftRear.setPower(0.0);
+                    rightRear.setPower(0.0);
+                    break;
+                }
+            }
+        }
+
+        if (motorDistance < 0) {
+
+            while (true) {
+                // telemetry.addData("leftFront",  "Distance: %3d", leftFront.getCurrentPosition());
+                // telemetry.update();
+
+                if ((Math.abs(leftFront.getCurrentPosition()) + Math.abs(rightFront.getCurrentPosition()) +
+                        Math.abs(leftRear.getCurrentPosition()) + Math.abs(rightRear.getCurrentPosition())) / 4.0 < (Math.abs(motorDistance) / 6) && state1)
+                {
+                    for (double i = 0; i <= 1; i += .0625) {
+                        correction = checkDirection();
+                        leftFront.setPower(-i * (power + correction));
+                        rightFront.setPower(-i * (power - correction));
+                        leftRear.setPower(-i * (power + correction));
+                        rightRear.setPower(-i * (power - correction));
+                        state1 = false;
+                        if (up && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  >= slideHeight) {
+                            slideLeft.setPower(0.0);
+                            slideRight.setPower(0.0);
+                        }
+                        if (down && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  <= slideHeight) {
+                            slideLeft.setPower(0.0);
+                            slideRight.setPower(0.0);
+                        }
+                        if (left && (double) turret.getCurrentPosition() >= turretPos)
+                            turret.setPower(0.0);
+                        if (right && (double) turret.getCurrentPosition() <= turretPos)
+                            turret.setPower(0.0);
+                    }
+                }
+
+                correction = checkDirection();
+                leftFront.setPower(-1 * (power + correction));
+                rightFront.setPower(-1 * (power - correction));
+                leftRear.setPower(-1 * (power + correction));
+                rightRear.setPower(-1 * (power - correction));
+
+                if (up && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  >= slideHeight) {
+                    slideLeft.setPower(0.0);
+                    slideRight.setPower(0.0);
+                }
+                if (down && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  <= slideHeight) {
+                    slideLeft.setPower(0.0);
+                    slideRight.setPower(0.0);
+                }
+                if (left && (double) turret.getCurrentPosition() >= turretPos)
+                    turret.setPower(0.0);
+                if (right && (double) turret.getCurrentPosition() <= turretPos)
+                    turret.setPower(0.0);
+
+                Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+                opMode.telemetry.addData("Gyro Angle", "(%.2f)", angles.firstAngle);
+                opMode.telemetry.addData("Encoders:", "M0: %3d  M1:%3d  M2:%3d  M3:%3d",
+                        leftFront.getCurrentPosition(),
+                        rightFront.getCurrentPosition(),
+                        leftRear.getCurrentPosition(),
+                        rightRear.getCurrentPosition());
+                opMode.telemetry.update();
+
+                if ((Math.abs(leftFront.getCurrentPosition()) + Math.abs(rightFront.getCurrentPosition()) +
+                        Math.abs(leftRear.getCurrentPosition()) + Math.abs(rightRear.getCurrentPosition())) / 4.0 > ((4.0/6) * motorDistance) && state2)
+                {
+                    opMode.telemetry.addData("turretPos", turret.getCurrentPosition());
+                    opMode.telemetry.update();
+                    for (double j = 1; j >= 0; j -= .0625) {
+                        correction = checkDirection();
+                        leftFront.setPower(-j * (power + correction));
+                        rightFront.setPower(-j * (power - correction));
+                        leftRear.setPower(-j * (power + correction));
+                        rightRear.setPower(-j * (power - correction));
+                        state2 = false;
+                        if (up && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  >= slideHeight) {
+                            slideLeft.setPower(0.0);
+                            slideRight.setPower(0.0);
+                        }
+                        if (down && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  <= slideHeight) {
+                            slideLeft.setPower(0.0);
+                            slideRight.setPower(0.0);
+                        }
+                        if (left && (double) turret.getCurrentPosition() >= turretPos)
+                            turret.setPower(0.0);
+                        if (right && (double) turret.getCurrentPosition() <= turretPos)
+                            turret.setPower(0.0);
+                    }
+                }
+
+                // Stop driving when Motor Encoder Avg. <= motorDistance
+                if ((Math.abs(leftFront.getCurrentPosition()) + Math.abs(rightFront.getCurrentPosition()) +
+                        Math.abs(leftRear.getCurrentPosition()) + Math.abs(rightRear.getCurrentPosition()) / 4.0
+                        >= Math.abs(motorDistance))) {
+                    leftFront.setPower(0.0);
+                    rightFront.setPower(0.0);
+                    leftRear.setPower(0.0);
+                    rightRear.setPower(0.0);
+                    break;
+                }
+            }
+        }
+    }
+
+    public void accelLeftGyroSlidesTurret(double inchesToDrive, double drivePower, double slideHeight, double slidePower, int turretPos, double turretSpeed, boolean yesOrNo) {
+
+        double power = drivePower;
+        double motorDistance = (double) (inchesToDrive * STRAFE_COUNTS_PER_INCH);
+        double correction;
+        boolean state1 = true;
+        boolean state2 = true;
+        boolean up = false;
+        boolean down = false;
+        boolean left = false;
+        boolean right = false;
+
+        leftFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        /* slideLeft.setTargetPosition((int) slideHeight);
+        slideRight.setTargetPosition((int) -slideHeight);
+
+        slideLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        slideRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+         */
+
+        turret.setTargetPosition(turretPos);
+        turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        opMode.sleep(150);
+
+        // move slides
+        if (yesOrNo && slideLeft.getCurrentPosition() < slideHeight) {
+            slideLeft.setPower(-slidePower);
+            slideRight.setPower(-slidePower);
+            up = true;
+        }
+        else if (yesOrNo && slideLeft.getCurrentPosition() > slideHeight) {
+            slideLeft.setPower(slidePower);
+            slideRight.setPower(slidePower);
+            down = true;
+        }
+
+        //move turret
+        /* if (turret.getCurrentPosition() > turretPos) {
+            turret.setPower(-turretSpeed);
+            right = true;
+        }
+        else if (turret.getCurrentPosition() < turretPos) {
+            turret.setPower(turretSpeed);
+            left = true;
+        }
+
+         */
+
+        // Ensure that the opmode is still active
+        if (opMode.opModeIsActive()) {
+            opMode.sleep(200);
+
+            startMotorCounts = rightFront.getCurrentPosition();
+            stopMotorCounts = startMotorCounts + (int) (inchesToDrive * STRAFE_COUNTS_PER_INCH);
+            drive1 = 0.0;
+            drive2 = power;
+            leftPower = Range.clip(drive1 + drive2, -1.0, 1.0);
+            rightPower = Range.clip(drive1 - drive2, -1.0, 1.0);
+            // Send calculated power to wheels
+            /* leftFront.setPower(rightPower);
+            rightFront.setPower(leftPower);
+            leftRear.setPower(leftPower);
+            rightRear.setPower(rightPower);
+            
+             */
+
+            while (true) {
+
+                if ((Math.abs(leftFront.getCurrentPosition()) + Math.abs(rightFront.getCurrentPosition()) +
+                        Math.abs(leftRear.getCurrentPosition()) + Math.abs(rightRear.getCurrentPosition())) / 4.0 < (Math.abs(stopMotorCounts) / 6)
+                        && state1)
+                {
+                    for (double i = 0; i <= 1; i += .0625) {
+                        correction = checkDirection();
+                        leftFront.setPower(i * (rightPower - correction));
+                        rightFront.setPower(i * (leftPower + correction));
+                        leftRear.setPower(i * (leftPower - correction));
+                        rightRear.setPower(i * (rightPower + correction));
+                        state1 = false;
+                        if (up && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  >= slideHeight) {
+                            slideLeft.setPower(0.0);
+                            slideRight.setPower(0.0);
+                        }
+                        if (down && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  <= slideHeight) {
+                            slideLeft.setPower(0.0);
+                            slideRight.setPower(0.0);
+                        }
+                        /* if (left && (double) turret.getCurrentPosition() >= turretPos)
+                            turret.setPower(0.0);
+                        if (right && (double) turret.getCurrentPosition() <= turretPos)
+                            turret.setPower(0.0);
+
+                         */
+                    }
+                }
+
+                correction = checkDirection();
+                leftFront.setPower(rightPower - correction);
+                rightFront.setPower(leftPower + correction);
+                leftRear.setPower(leftPower - correction);
+                rightRear.setPower(rightPower + correction);
+
+                if (up && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  >= slideHeight) {
+                    slideLeft.setPower(0.0);
+                    slideRight.setPower(0.0);
+                }
+                if (down && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  <= slideHeight) {
+                    slideLeft.setPower(0.0);
+                    slideRight.setPower(0.0);
+                }
+                /* if (left && (double) turret.getCurrentPosition() >= turretPos)
+                    turret.setPower(0.0);
+                if (right && (double) turret.getCurrentPosition() <= turretPos)
+                    turret.setPower(0.0);
+
+                 */
+
+                Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+                opMode.telemetry.addData("Gyro Angle", "(%.2f)", angles.firstAngle);
+                opMode.telemetry.addData("Encoders:", "M0: %3d  M1:%3d  M2:%3d  M3:%3d",
+                        leftFront.getCurrentPosition(),
+                        -rightFront.getCurrentPosition(),
+                        -leftRear.getCurrentPosition(),
+                        rightRear.getCurrentPosition());
+                opMode.telemetry.update();
+
+                if ((Math.abs(leftFront.getCurrentPosition()) + Math.abs(rightFront.getCurrentPosition()) +
+                        Math.abs(leftRear.getCurrentPosition()) + Math.abs(rightRear.getCurrentPosition())) / 4.0 > ((4.0/6) * Math.abs(stopMotorCounts))
+                        && state2)
+                {
+                    opMode.telemetry.addData("turretPos", turret.getCurrentPosition());
+                    opMode.telemetry.update();
+                    for (double j = 1; j >= 0; j -= .0625) {
+                        correction = checkDirection();
+                        leftFront.setPower(j * (rightPower - correction));
+                        rightFront.setPower(j * (leftPower + correction));
+                        leftRear.setPower(j * (leftPower - correction));
+                        rightRear.setPower(j * (rightPower + correction));
+                        state2 = false;
+                        if (up && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  >= slideHeight) {
+                            slideLeft.setPower(0.0);
+                            slideRight.setPower(0.0);
+                        }
+                        if (down && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  <= slideHeight) {
+                            slideLeft.setPower(0.0);
+                            slideRight.setPower(0.0);
+                        }
+                        /* if (left && (double) turret.getCurrentPosition() >= turretPos)
+                            turret.setPower(0.0);
+                        if (right && (double) turret.getCurrentPosition() <= turretPos)
+                            turret.setPower(0.0);
+
+                         */
+                    }
+                }
+
+                // Stop when the bot has driven the requested distance
+                if ((Math.abs(leftFront.getCurrentPosition()) + Math.abs(rightFront.getCurrentPosition()) +
+                        Math.abs(leftRear.getCurrentPosition()) + Math.abs(rightRear.getCurrentPosition())) / 4.0 >= Math.abs(stopMotorCounts)) {
+                    stop();
+                    break;
+                }
+            }
+        }
+    }
+
+    public void accelRightGyroSlidesTurret(double inchesToDrive, double drivePower, double slideHeight, double slidePower, int turretPos, double turretSpeed, boolean yesOrNo) {
+
+        double power = drivePower;
+        double motorDistance = (double) (inchesToDrive * STRAFE_COUNTS_PER_INCH);
+        double correction;
+        boolean state1 = true;
+        boolean state2 = true;
+        boolean up = false;
+        boolean down = false;
+        boolean left = false;
+        boolean right = false;
+
+        leftFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        /* slideLeft.setTargetPosition((int) slideHeight);
+        slideRight.setTargetPosition((int) -slideHeight);
+
+
+        slideLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        slideRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+         */
+
+        turret.setTargetPosition(turretPos);
+        turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        opMode.sleep(150);
+
+        // move slides
+        if (yesOrNo && slideLeft.getCurrentPosition() < slideHeight) {
+            slideLeft.setPower(-slidePower);
+            slideRight.setPower(-slidePower);
+            up = true;
+        }
+        else if (yesOrNo && slideLeft.getCurrentPosition() > slideHeight) {
+            slideLeft.setPower(slidePower);
+            slideRight.setPower(slidePower);
+            down = true;
+        }
+
+        //move turret
+        /* if (turret.getCurrentPosition() > turretPos) {
+            turret.setPower(-turretSpeed);
+            right = true;
+        }
+        else if (turret.getCurrentPosition() < turretPos) {
+            turret.setPower(turretSpeed);
+            left = true;
+        }
+
+         */
+
+        // Ensure that the opmode is still active
+        if (opMode.opModeIsActive()) {
+            opMode.sleep(200);
+
+            startMotorCounts = rightFront.getCurrentPosition();
+            stopMotorCounts = startMotorCounts - (inchesToDrive * STRAFE_COUNTS_PER_INCH);
+            drive1 = 0.0;
+            drive2 = -power;
+            leftPower = Range.clip(drive1 + drive2, -1.0, 1.0);
+            rightPower = Range.clip(drive1 - drive2, -1.0, 1.0);
+            // Send calculated power to wheels
+            /* leftFront.setPower(rightPower);
+            rightFront.setPower(leftPower);
+            leftRear.setPower(leftPower);
+            rightRear.setPower(rightPower);
+            
+             */
+
+            while (true) {
+
+                if ((Math.abs(leftFront.getCurrentPosition()) + Math.abs(rightFront.getCurrentPosition()) +
+                        Math.abs(leftRear.getCurrentPosition()) + Math.abs(rightRear.getCurrentPosition())) / 4.0 < (Math.abs(stopMotorCounts) / 6)
+                        && state1)
+                {
+                    for (double i = 0; i <= 1; i += .0625) {
+                        correction = checkDirection();
+                        leftFront.setPower(i * (rightPower - correction));
+                        rightFront.setPower(i * (leftPower + correction));
+                        leftRear.setPower(i * (leftPower - correction));
+                        rightRear.setPower(i * (rightPower + correction));
+                        state1 = false;
+                        if (up && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  >= slideHeight) {
+                            slideLeft.setPower(0.0);
+                            slideRight.setPower(0.0);
+                        }
+                        if (down && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  <= slideHeight) {
+                            slideLeft.setPower(0.0);
+                            slideRight.setPower(0.0);
+                        }
+                        /* if (left && (double) turret.getCurrentPosition() >= turretPos)
+                            turret.setPower(0.0);
+                        if (right && (double) turret.getCurrentPosition() <= turretPos)
+                            turret.setPower(0.0);
+
+                         */
+                    }
+                }
+
+                correction = checkDirection();
+                leftFront.setPower(rightPower - correction);
+                rightFront.setPower(leftPower + correction);
+                leftRear.setPower(leftPower - correction);
+                rightRear.setPower(rightPower + correction);
+
+                if (up && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  >= slideHeight) {
+                    slideLeft.setPower(0.0);
+                    slideRight.setPower(0.0);
+                }
+                if (down && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  <= slideHeight) {
+                    slideLeft.setPower(0.0);
+                    slideRight.setPower(0.0);
+                }
+                /* if (left && (double) turret.getCurrentPosition() >= turretPos)
+                    turret.setPower(0.0);
+                if (right && (double) turret.getCurrentPosition() <= turretPos)
+                    turret.setPower(0.0);
+
+                 */
+
+                Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+                opMode.telemetry.addData("Gyro Angle", "(%.2f)", angles.firstAngle);
+                opMode.telemetry.addData("Encoders:", "M0: %3d  M1:%3d  M2:%3d  M3:%3d",
+                        leftFront.getCurrentPosition(),
+                        -rightFront.getCurrentPosition(),
+                        -leftRear.getCurrentPosition(),
+                        rightRear.getCurrentPosition());
+                opMode.telemetry.update();
+
+                if ((Math.abs(leftFront.getCurrentPosition()) + Math.abs(rightFront.getCurrentPosition()) +
+                        Math.abs(leftRear.getCurrentPosition()) + Math.abs(rightRear.getCurrentPosition())) / 4.0 > ((4.0/6) * Math.abs(stopMotorCounts))
+                        && state2)
+                {
+                    opMode.telemetry.addData("turretPos", turret.getCurrentPosition());
+                    opMode.telemetry.update();
+                    for (double j = 1; j >= 0; j -= .0625) {
+                        correction = checkDirection();
+                        leftFront.setPower(j * (rightPower - correction));
+                        rightFront.setPower(j * (leftPower + correction));
+                        leftRear.setPower(j * (leftPower - correction));
+                        rightRear.setPower(j * (rightPower + correction));
+                        state2 = false;
+                        if (up && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  >= slideHeight) {
+                            slideLeft.setPower(0.0);
+                            slideRight.setPower(0.0);
+                        }
+                        if (down && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  <= slideHeight) {
+                            slideLeft.setPower(0.0);
+                            slideRight.setPower(0.0);
+                        }
+                        /* if (left && (double) turret.getCurrentPosition() >= turretPos)
+                            turret.setPower(0.0);
+                        if (right && (double) turret.getCurrentPosition() <= turretPos)
+                            turret.setPower(0.0);
+
+                         */
+                    }
+                }
+
+                // Stop when the bot has driven the requested distance
+                if (Math.abs(rightFront.getCurrentPosition()) >= Math.abs(stopMotorCounts)) {
+                    stop();
+                    break;
+                }
+            }
+        }
+    }
+
+    public void coneStackDetect(boolean isRed, boolean isLeft) { //120-180 gray, 12-60 red, 210-225 blue
+        float[] hsvValues = new float[3];
+        int leftEdge = 0;
+        int rightEdge = 0;
+
+        if ((isRed && !isLeft) || (!isRed && isLeft)) { //red right and blue left
+            driveStraightGyro(3,0.25);
+            Color.colorToHSV(colors.toColor(), hsvValues);
+            if (hsvValues[0] < 110 || hsvValues[0] > 190) {
+                rightEdge = leftFront.getCurrentPosition();
+            } if (hsvValues[0] > 110 && hsvValues[0] < 190) {
+                leftEdge = leftFront.getCurrentPosition();
+            }
+            double avgPos = (double)(leftEdge + rightEdge)/2;
+            strafeRightIMU(0.5, 12);
+        } else { //red left and blue right
+            driveStraightGyro(3,0.25);
+            Color.colorToHSV(colors.toColor(), hsvValues);
+            if (hsvValues[0] < 110 || hsvValues[0] > 190) {
+                rightEdge = leftFront.getCurrentPosition();
+            } if (hsvValues[0] > 110 && hsvValues[0] < 190) {
+                leftEdge = leftFront.getCurrentPosition();
+            }
+            double avgPos = (double)(leftEdge + rightEdge)/2;
+            strafeLeftIMU(0.5, 12);
+        }
+
+
+    }
+
+    public void coneLineDetect(boolean isRed, boolean frontOrBack) {
+        float[] hsvValues = {0F, 0F, 0F};
+        Color.RGBToHSV(colorSensor.red() * 8, colorSensor.green() * 8, colorSensor.blue() * 8, hsvValues);
+        boolean seenCol = false;
+
+        runtime.reset();
+
+
+        if (isRed) {
+            while(true) {
+                if (!frontOrBack) {
+                    Color.RGBToHSV(colorSensor.red() * 8, colorSensor.green() * 8, colorSensor.blue() * 8, hsvValues);
+                    leftFront.setPower(-0.1);
+                    rightFront.setPower(-0.1);
+                    leftRear.setPower(-0.1);
+                    rightRear.setPower(-0.1);
+                    opMode.telemetry.addData("Hue", hsvValues[0]);
+                    opMode.telemetry.update();
+
+                    if (hsvValues[0] < 80 || hsvValues[0] > 190) { //If the robot is starting on gray, it'll go until it sees red, then go until it sees gray again
+                        seenCol = true;
+                        while (true) {
+                            Color.RGBToHSV(colorSensor.red() * 8, colorSensor.green() * 8, colorSensor.blue() * 8, hsvValues);
+                            leftFront.setPower(-0.1);
+                            rightFront.setPower(-0.1);
+                            leftRear.setPower(-0.1);
+                            rightRear.setPower(-0.1);
+                            opMode.sleep(200);
+                            opMode.telemetry.addData("Hue", hsvValues[0]);
+                            opMode.telemetry.update();
+
+                            if (hsvValues[0] < 2 || hsvValues[0] > 65){
+                                stop();
+                                break;
+                            }
+                        }
+                    }
+                    if ((seenCol) && (hsvValues[0] < 2 || hsvValues[0] > 65)) // If the robot is starting on red, it'll stop once it reaches the gray again
+                        break;
+
+                    if (runtime.seconds() > 3) {
+                        Color.RGBToHSV(colorSensor.red() * 8, colorSensor.green() * 8, colorSensor.blue() * 8, hsvValues);
+                        leftFront.setPower(0.1);
+                        rightFront.setPower(0.1);
+                        leftRear.setPower(0.1);
+                        rightRear.setPower(0.1);
+                        opMode.telemetry.addData("Hue", hsvValues[0]);
+                        opMode.telemetry.update();
+
+                        if (hsvValues[0] > 2 || hsvValues[0] < 65){
+                            stop();
+                            break;
+                        }
+                    }
+                } else {
+                    Color.RGBToHSV(colorSensor.red() * 8, colorSensor.green() * 8, colorSensor.blue() * 8, hsvValues);
+                    leftFront.setPower(0.1);
+                    rightFront.setPower(0.1);
+                    leftRear.setPower(0.1);
+                    rightRear.setPower(0.1);
+                    opMode.telemetry.addData("Hue", hsvValues[0]);
+                    opMode.telemetry.update();
+
+                    if (hsvValues[0] < 80 || hsvValues[0] > 190) { //If the robot is starting on gray, it'll go until it sees red, then go until it sees gray again
+                        stop();
+                        break;
+                        /* seenCol = true;
+                        while (true) {
+                            Color.RGBToHSV(colorSensor.red() * 8, colorSensor.green() * 8, colorSensor.blue() * 8, hsvValues);
+                            leftFront.setPower(-0.1);
+                            rightFront.setPower(-0.1);
+                            leftRear.setPower(-0.1);
+                            rightRear.setPower(-0.1);
+                            opMode.telemetry.addData("Hue", hsvValues[0]);
+                            opMode.telemetry.update();
+
+                            if (hsvValues[0] < 2 || hsvValues[0] > 65){
+                                stop();
+                                break;
+                            }
+                        }
+
+                         */
+                    }
+
+                    if (runtime.seconds() > 3) {
+                        Color.RGBToHSV(colorSensor.red() * 8, colorSensor.green() * 8, colorSensor.blue() * 8, hsvValues);
+                        leftFront.setPower(-0.1);
+                        rightFront.setPower(-0.1);
+                        leftRear.setPower(-0.1);
+                        rightRear.setPower(-0.1);
+                        opMode.telemetry.addData("Hue", hsvValues[0]);
+                        opMode.telemetry.update();
+
+                        if (hsvValues[0] > 2 || hsvValues[0] < 65){
+                            stop();
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        else {
+            while(true) {
+                if (!frontOrBack) {
+                    Color.RGBToHSV(colorSensor.red() * 8, colorSensor.green() * 8, colorSensor.blue() * 8, hsvValues);
+                    leftFront.setPower(-0.1);
+                    rightFront.setPower(-0.1);
+                    leftRear.setPower(-0.1);
+                    rightRear.setPower(-0.1);
+                    opMode.telemetry.addData("Hue", hsvValues[0]);
+                    opMode.telemetry.update();
+
+                    if (hsvValues[0] < 80 || hsvValues[0] > 190) {
+                        seenCol = true;
+                        while (true) {
+                            Color.RGBToHSV(colorSensor.red() * 8, colorSensor.green() * 8, colorSensor.blue() * 8, hsvValues);
+                            leftFront.setPower(-0.1);
+                            rightFront.setPower(-0.1);
+                            leftRear.setPower(-0.1);
+                            rightRear.setPower(-0.1);
+                            opMode.telemetry.addData("Hue", hsvValues[0]);
+                            opMode.telemetry.update();
+
+                            if (hsvValues[0] < 200 || hsvValues[0] > 235){
+                                stop();
+                                break;
+                            }
+                        }
+                    }
+                    if ((seenCol) && (hsvValues[0] < 200 || hsvValues[0] > 235))
+                        break;
+
+                    if (runtime.seconds() > 3) {
+                        Color.RGBToHSV(colorSensor.red() * 8, colorSensor.green() * 8, colorSensor.blue() * 8, hsvValues);
+                        leftFront.setPower(0.1);
+                        rightFront.setPower(0.1);
+                        leftRear.setPower(0.1);
+                        rightRear.setPower(0.1);
+                        opMode.telemetry.addData("Hue", hsvValues[0]);
+                        opMode.telemetry.update();
+
+                        if (hsvValues[0] > 2 || hsvValues[0] < 65){
+                            stop();
+                            break;
+                        }
+                    }
+                } else {
+                    Color.RGBToHSV(colorSensor.red() * 8, colorSensor.green() * 8, colorSensor.blue() * 8, hsvValues);
+                    leftFront.setPower(0.1);
+                    rightFront.setPower(0.1);
+                    leftRear.setPower(0.1);
+                    rightRear.setPower(0.1);
+                    opMode.telemetry.addData("Hue", hsvValues[0]);
+                    opMode.telemetry.update();
+
+                    if (hsvValues[0] < 80 || hsvValues[0] > 190) {
+                        stop();
+                        break;
+                    }
+                        /* seenCol = true;
+                        while (true) {
+                            Color.RGBToHSV(colorSensor.red() * 8, colorSensor.green() * 8, colorSensor.blue() * 8, hsvValues);
+                            leftFront.setPower(-0.1);
+                            rightFront.setPower(-0.1);
+                            leftRear.setPower(-0.1);
+                            rightRear.setPower(-0.1);
+                            opMode.telemetry.addData("Hue", hsvValues[0]);
+                            opMode.telemetry.update();
+
+                            if (hsvValues[0] < 200 || hsvValues[0] > 235){
+                                stop();
+                                break;
+                            }
+                        }
+                    }
+                    if ((seenCol) && (hsvValues[0] < 200 || hsvValues[0] > 235))
+                        break;
+
+                         */
+
+                    if (runtime.seconds() > 3) {
+                        Color.RGBToHSV(colorSensor.red() * 8, colorSensor.green() * 8, colorSensor.blue() * 8, hsvValues);
+                        leftFront.setPower(-0.1);
+                        rightFront.setPower(-0.1);
+                        leftRear.setPower(-0.1);
+                        rightRear.setPower(-0.1);
+                        opMode.telemetry.addData("Hue", hsvValues[0]);
+                        opMode.telemetry.update();
+
+                        if (hsvValues[0] > 2 || hsvValues[0] < 65){
+                            stop();
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+
+        /* while (!opMode.isStopRequested()) {
+
+            // send the info back to driver station using telemetry function.
+            opMode.telemetry.addData("Clear", colorSensor.alpha());
+            opMode.telemetry.addData("Red  ", colorSensor.red());
+            opMode.telemetry.addData("Green", colorSensor.green());
+            opMode.telemetry.addData("Blue ", colorSensor.blue());
+            opMode.telemetry.addData("Hue", hsvValues[0]);
+
+            // change the background color to match the color detected by the RGB sensor.
+            // pass a reference to the hue, saturation, and value array as an argument
+            // to the HSVToColor method.
+            relativeLayout.post(new Runnable() {
+                public void run() {
+                    relativeLayout.setBackgroundColor(Color.HSVToColor(0xff, values));
+                }
+            });
+
+
+
+            opMode.telemetry.update();
+        }
+        */
+
     }
 
     public void strafeLeftGyroSlidesTurret(double inchesToDrive, double drivePower, double slideHeight, double slidePower, int turretPos, double turretSpeed) {

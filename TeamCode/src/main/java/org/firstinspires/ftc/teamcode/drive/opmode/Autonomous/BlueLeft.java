@@ -1,10 +1,19 @@
 package org.firstinspires.ftc.teamcode.drive.opmode.Autonomous;
 
+import static org.firstinspires.ftc.teamcode.drive.SampleMecanumDrive.JUNCTION_LOW;
+
+import org.firstinspires.ftc.teamcode.drive.opmode.Autonomous.StageSwitchingPipeline;
+
+import com.acmerobotics.roadrunner.geometry.Pose2d;
+import com.acmerobotics.roadrunner.geometry.Vector2d;
+import com.acmerobotics.roadrunner.trajectory.Trajectory;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.DcMotor;
 
-import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.teamcode.drive.SampleMecanumDrive;
+import org.firstinspires.ftc.teamcode.trajectorysequence.TrajectorySequence;
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.openftc.apriltag.AprilTagDetection;
 import org.openftc.easyopencv.OpenCvCamera;
 import org.openftc.easyopencv.OpenCvCameraFactory;
@@ -43,6 +52,7 @@ public class BlueLeft extends LinearOpMode {
         int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
         camera = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "Webcam 1"), cameraMonitorViewId);
         aprilTagDetectionPipeline = new AprilTagDetectionPipeline(tagsize, fx, fy, cx, cy);
+        StageSwitchingPipelineLeftSide stageSwitchingPipelineLeftSide = new StageSwitchingPipelineLeftSide();
 
         camera.setPipeline(aprilTagDetectionPipeline);
         camera.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener()
@@ -136,74 +146,81 @@ public class BlueLeft extends LinearOpMode {
 
         /* Actually do something useful */
         if(tagOfInterest == null) {
-
+            drive.resetSlides();
+            drive.resetTurret();
         }
 
         else if (tagOfInterest != null) {
+            drive.resetTurret();
             drive.resetSlides();
+
             drive.closeClaw();
-            drive.moveSlidesToHeightABS(700);
-            //Close the claw over the cone and raise slides up
-            drive.driveStraightGyroSlidesTurret(14.5, 0.5, 2200, 0.8, -420, 0.8);
-            drive.strafeRightGyroSlidesTurret(0.1, 0.2, 2200, 0.8, -420, 0.8);
-            //Drive to the small junction and rotate turret
-            drive.openClaw();
-            //Drop cone
-            drive.strafeLeftGyroSlidesTurret(3, 0.45, 2200,0.8, -420, 0.7);
-            drive.driveStraightGyroSlidesTurret(1.7, 0.75, 2100, 0.8, 440, 1);
-            drive.closeClaw();
-            drive.driveStraightGyroSlidesTurret(38.2, 0.65, 2100, 0.8, 440, 1);
-            sleep(200);
-            drive.driveStraightGyroSlidesTurret(-2.5, 0.4, 750, 0.8, 440, 0.25);
-            //Move forward and push signal sleeve out of the way
-            drive.openClaw();
-            drive.strafeLeftGyroSlidesTurret(21.5, 0.7, 750, 0.8, 440, 0.25);
-            drive.strafeLeftGyroSlidesTurret(2.75, 0.3, 750, 0.8, 440, 0.25);
-            drive.closeClaw();
-            //Move to cone stack and grab cone
-            sleep(200);
-            drive.driveStraightGyroSlidesTurret(0, 0, 1500, 1, 440, 0.25);
-            drive.strafeRightGyroSlidesTurret(14.5, 0.6, 2050, 0.5, 840, 0.25);
-            drive.driveStraightGyroSlidesTurret(-1.25, 0.3, 2150, 0.5, 840, 0.25);
+            camera.setPipeline(stageSwitchingPipelineLeftSide);
+
+            drive.accelStraightGyroSlidesTurret(42, 0.45, 2500, 0.8, -420,0.3);
+            sleep(500);
+            drive.moveSlidesToHeightABS(2450, 0.4);
             drive.openClaw();
             sleep(200);
-            //Drop cone in the other low junction
-            drive.driveStraightGyroSlidesTurret(1.25, 0.3, 2050, 0.5, 440, 0.25);
-            drive.strafeLeftGyroSlidesTurret(14 , 0.55, 750, 0.8, 440, 0.25);
-            drive.closeClaw();
-            //Move to cone stack and grab cone
-            sleep(200);
-            drive.driveStraightGyroSlidesTurret(0, 0, 1500, 1, 840, 0.25);
-            drive.strafeRightGyroSlidesTurret(41.25, 0.65, 3700, 0.5, 840, 0.25);
-            sleep(250);
-            drive.driveStraightGyroSlidesTurret(-1, 0.4, 3700, 0.5, 840, 0.25);
-            drive.openClaw();
-            sleep(300);
-            //Move to the medium junction and drop the cone
-            drive.driveStraightGyroSlidesTurret(2, 0.3, 2100, 0.5, 440, 0.25);
-            drive.strafeLeftGyroSlidesTurret(41, 0.7, 550, 0.8, 440, 0.25);
+            //Drop first cone in the junction
+
+            drive.accelStraightGyroSlidesTurret(18, 0.5, 2000, 0.6, 440,0.3);
+            drive.accelStraightGyroSlidesTurret(-3, 0.4, 780, 0.8, 440,0.3);
+            drive.accelLeftGyroSlidesTurret(28, 0.8, 550, 0, 440, 0.4, false);
+            drive.accelStraightGyroSlidesTurret(0, 0, 550, 0, 440, 0.4);
+            drive.coneLineDetect(false, true);
+            drive.accelLeftGyroSlidesTurret(4.5, 0.3, 530, 0, 440, 0, false);
             drive.closeClaw();
             sleep(200);
-            //Grab another cone
-            drive.driveStraightGyroSlidesTurret(0, 0, 1500, 1, 440, 0.25);
-            drive.strafeRightGyroSlidesTurret(38.5, 0.5, 5150, 0.75, 0, 0.25);
+            //Pick up second cone from stack
+
+            drive.moveSlidesToHeightABS(1100, 0.7);
+            drive.turnTankGyro(-1, 0.3);
+            drive.accelRightGyroSlidesTurret(38, 0.8, 1100, 0.2, 880, 0.4, true);
+            drive.strafeIMUJunctionLeft(false, 0.2, stageSwitchingPipelineLeftSide);
+            drive.accelStraightGyroSlidesTurret(-3, 0.2, 2500, 0.9, 880, 0);
             sleep(200);
-            drive.driveStraightGyroSlidesTurret(3, 0.15, 5150, 0.75, 0, 0.25);
+            drive.moveSlidesToHeightABS(2450, 0.2);
             drive.openClaw();
             sleep(200);
-            //Drop the cone in the high junction
-            drive.driveStraightGyroSlidesTurret(-5, 0.2, 4500, 0.8, -20, 0.25);
+            //Drop the second cone on the medium junction
+
+            drive.accelStraightGyroSlidesTurret(2, 0.2, 2450, 0, 440, 0.4);
+            drive.accelLeftGyroSlidesTurret(40, 0.75, 500, 0.7, 440, 0.4, true);
+            drive.accelStraightGyroSlidesTurret(0, 0, 470, 0, 440, 0.4);
+            drive.coneLineDetect(false, true);
+            drive.accelLeftGyroSlidesTurret(3.5, 0.3, 470, 0, 440, 0, false);
+            drive.closeClaw();
+            sleep(200);
+            //Pick up the third cone
+
+            drive.moveSlidesToHeightABS(1100, 0.7);
+            drive.turnTankGyro(-1, 0.3);
+            drive.accelRightGyroSlidesTurret(40, 0.8, 1100, 0.2, 880, 0.4, true);
+            drive.strafeIMUJunctionLeft(false, 0.2, stageSwitchingPipelineLeftSide);
+            drive.accelStraightGyroSlidesTurret(-3.5, 0.2, 2500, 0.9, 880, 0);
+            sleep(200);
+            drive.moveSlidesToHeightABS(2450, 0.4);
+            drive.openClaw();
+            //Drop the third cone
+
+            drive.accelStraightGyroSlidesTurret(1.5, 0.3, 2400, 0, 410, 0.3);
+            drive.closeClaw();
+
+
+            //Move to the medium junction from the start and drop the cone
 
             if(tagOfInterest.id == LEFT)
-                drive.strafeLeftGyroSlidesTurret(38, 0.9, 750, 0.8, 20, 0.25);
-            //Move to square one
+                drive.accelLeftGyroSlidesTurret(39, 0.5, 200, 0.6, 0, 0.6, true);
+                //Move to square one
 
             else if(tagOfInterest.id == MIDDLE)
-                drive.strafeLeftGyroSlidesTurret(11, 0.3, 750, 0.8, 20, 0.25);
-            //Move to square two
+                drive.accelLeftGyroSlidesTurret(14, 0.5, 200, 0.6, 0, 0.6, true);
+                //Move to square two
 
-            else if(tagOfInterest.id == RIGHT)
-                drive.strafeRightGyroSlidesTurret(12, 0.3, 750, 0.8, 20, 0.25);
+            else if(tagOfInterest.id == RIGHT) {
+                drive.accelRightGyroSlidesTurret(12, 0.8, 200, 0.4, 0, 0.7, true);
+            }
             //Move to square three
         }
     }

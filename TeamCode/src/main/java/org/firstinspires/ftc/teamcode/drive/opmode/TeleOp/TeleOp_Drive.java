@@ -20,6 +20,10 @@ public class TeleOp_Drive extends LinearOpMode {
         SampleMecanumDrive drive = new SampleMecanumDrive(this, hardwareMap);
 
         drive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        while (opModeInInit()) {
+            drive.resetTurret();
+            drive.resetSlides();
+        }
 
         waitForStart();
 
@@ -41,6 +45,21 @@ public class TeleOp_Drive extends LinearOpMode {
                 drive.closeClaw();
             if (gamepad2.left_bumper)
                 drive.openClaw();
+
+            if (gamepad1.y)
+                drive.resetSlides();
+
+            /*if (gamepad2.y)
+                drive.moveTurretToPosition(0);
+            if(gamepad2.b)
+                drive.moveTurretToPosition(-440);
+            if(gamepad2.x)
+                drive.moveTurretToPosition(440);
+            if(gamepad2.a)
+                drive.moveTurretToPosition(880);
+
+             */
+
             /* if (gamepad2.a)
                 drive.moveSlidesToHeight(HIGH_JUNCTION);
             if (gamepad2.b)
