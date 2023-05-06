@@ -22,7 +22,7 @@ import org.openftc.easyopencv.OpenCvCameraRotation;
 import java.util.ArrayList;
 
 @Autonomous
-public class RedRight extends LinearOpMode {
+public class RedLeftTest extends LinearOpMode {
     OpenCvCamera camera;
     AprilTagDetectionPipeline aprilTagDetectionPipeline;
 
@@ -52,6 +52,7 @@ public class RedRight extends LinearOpMode {
         int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
         camera = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "Webcam 1"), cameraMonitorViewId);
         aprilTagDetectionPipeline = new AprilTagDetectionPipeline(tagsize, fx, fy, cx, cy);
+        StageSwitchingPipelineLeftSide stageSwitchingPipelineLeftSide = new StageSwitchingPipelineLeftSide();
         StageSwitchingPipeline stageSwitchingPipeline = new StageSwitchingPipeline();
 
         camera.setPipeline(aprilTagDetectionPipeline);
@@ -148,9 +149,6 @@ public class RedRight extends LinearOpMode {
         if(tagOfInterest == null) {
             drive.resetSlides();
             drive.resetTurret();
-
-            drive.accelLeftGyroSlidesTurret(12, 0.3,  1000, 0.5, 440, 0.3, true);
-            drive.accelRightGyroSlidesTurret(12, 0.3, 1000, 0.5, 440, 0.3, true);
         }
 
         else if (tagOfInterest != null) {
@@ -158,89 +156,80 @@ public class RedRight extends LinearOpMode {
             drive.resetSlides();
 
             drive.closeClaw();
-            camera.setPipeline(stageSwitchingPipeline);
+            camera.setPipeline(stageSwitchingPipelineLeftSide);
 
-            drive.accelStraightGyroSlidesTurret(35, 0.45, 1000, 0.8, 420,0.3);
-            sleep(500);
-            drive.moveIMUJunction(0.15, stageSwitchingPipeline);
-            //drive.accelLeftGyroSlidesTurret(3, 0.15, 2500, 0.8, 420, 0, false);
-            drive.strafeLeftGyroSlidesTurret(3, 0.3, 2550, 0.8, 420, 0);
-            sleep(200);
-            drive.moveSlidesToHeightABS(2450, 0.3);
-            drive.openClaw();
-
-            /*
-            drive.moveSlidesToHeightABS(2450, 0.4);
+            drive.accelStraightGyroSlidesTurret(38.5, 0.45, 1500, 0.8, 440,0.3);
+            drive.accelLeftGyroSlidesTurret(2.5, 0.3,1500, 0.2, 440, 0.3, false);
+            drive.moveSlidesToHeightABS(1425, 0.4);
             drive.openClaw();
             sleep(200);
-
-             */
             //Drop first cone in the junction
 
-            /*drive.accelStraightGyroSlidesTurret(16.5, 0.5, 2450, 0, -440,0.3);
-            drive.accelStraightGyroSlidesTurret(-3, 0.4, 2450, 0, -440,0);
-            drive.moveSlidesToHeightABS(550, 0.8);
-            sleep(200);
-            drive.accelRightGyroSlidesTurret(26, 0.8, 550, 0, -440, 0.4, false);
-            drive.accelStraightGyroSlidesTurret(0, 0, 550, 0, -440, 0.4);
-            drive.coneLineDetect(true, false);
-            drive.accelRightGyroSlidesTurret(3, 0.3, 530, 0, -440, 0, false);
+            drive.accelRightGyroSlidesTurret(2, 0.3, 1425, 0.4, 440, 0.3, true);
+            drive.accelStraightGyroSlidesTurret(15, 0.5, 1425, 0, 440,0);
+            drive.accelStraightGyroSlidesTurret(-3, 0.4, 1300, 0.4, 440,0);
+            drive.accelLeftGyroSlidesTurret(21, 0.7, 550, 0.5, 440, 0, true);
+            drive.accelStraightGyroSlidesTurret(0, 0, 550, 0, 440, 0.4);
+            drive.accelStraightGyroSlidesTurret(0, 0, 500, 0, 440, 0);
+            drive.coneLineDetect(true, true);
+            drive.accelLeftGyroSlidesTurret(3.5, 0.3, 550, 0, 440, 0, false);
             drive.closeClaw();
-            sleep(200);
-            //Pick up second cone from stack
+            sleep(100);
 
-            drive.moveSlidesToHeightABS(1100, 0.7);
-            drive.turnTankGyro(-2, 0.2);
-            drive.accelLeftGyroSlidesTurret(35, 0.8, 1150, 0.2, -880, 0.4, true);
-            drive.strafeIMUJunction(true, 0.2, stageSwitchingPipeline);
-            drive.accelStraightGyroSlidesTurret(-3, 0.2, 2500, 0.9, -880, 0);
-            sleep(200);
-            drive.moveSlidesToHeightABS(2400, 0.2);
+            drive.accelRightGyroSlidesTurret(3.5, 0.25, 900, 0.6, 440, 0, true);
+            drive.accelRightGyroSlidesTurret(4, 0.35, 150, 0.2, 880, 0.5, true);
+            drive.strafeIMUJunctionLeft(false, 0.25, stageSwitchingPipelineLeftSide);
+            drive.accelStraightGyroSlidesTurret(-5, 0.3, 1500, 0.8, 880, 0);
+            drive.moveSlidesToHeightABS(1425, 0.4);
             drive.openClaw();
-            sleep(200);
-            //Drop the second cone on the medium junction
+            sleep(100);
 
-            drive.accelStraightGyroSlidesTurret(1.5, 0.2, 2450, 0, -440, 0.4);
-            drive.accelRightGyroSlidesTurret(35, 0.75, 600, 0.7, -440, 0.4, true);
-            drive.accelStraightGyroSlidesTurret(0, 0, 530, 0, -440, 0.4);
-            drive.coneLineDetect(true, false);
-            sleep(200);
-            drive.accelRightGyroSlidesTurret(2, 0.3, 500, 0, -440, 0, false);
+            drive.accelStraightGyroSlidesTurret(2.5, 0.3, 1425, 0, 440, 0.4);
+            drive.accelLeftGyroSlidesTurret(8, 0.3, 500, 0.7, 440, 0.4, true);
+            drive.accelStraightGyroSlidesTurret(0, 0, 500, 0, 440, 0);
+            drive.coneLineDetect(true, true);
+            drive.accelLeftGyroSlidesTurret(3, 0.3, 500, 0, 440, 0, false);
             drive.closeClaw();
-            sleep(200);
-            //Pick up the third cone
 
-            drive.moveSlidesToHeightABS(1100, 0.7);
-            drive.turnTankGyro(-2.5, 0.2);
-            drive.accelLeftGyroSlidesTurret(34, 0.8, 1100, 0.2, -880, 0.4, true);
-            drive.strafeIMUJunction(true, 0.2, stageSwitchingPipeline);
-            drive.accelStraightGyroSlidesTurret(-3, 0.2, 2500, 0.9, -880, 0);
-            sleep(200);
-            drive.moveSlidesToHeightABS(2400, 0.4);
+            drive.accelRightGyroSlidesTurret(3.5, 0.25, 900, 0.6, 440, 0, true);
+            drive.accelRightGyroSlidesTurret(4, 0.25, 150, 0.2, 880, 0.5, true);
+            drive.strafeIMUJunctionLeft(false, 0.25, stageSwitchingPipelineLeftSide);
+            drive.accelStraightGyroSlidesTurret(-5, 0.3, 1500, 0.8, 880, 0);
+            drive.moveSlidesToHeightABS(1425, 0.4);
             drive.openClaw();
-            //Drop the third cone
+            sleep(100);
 
-            drive.accelStraightGyroSlidesTurret(2, 0.3, 2400, 0, -440, 0.3);
+            drive.accelStraightGyroSlidesTurret(2, 0.3, 1425, 0, 440, 0.4);
+            /* drive.accelLeftGyroSlidesTurret(10, 0.3, 500, 0.7, 440, 0.4, true);
+            drive.coneLineDetect(true, true);
+            drive.accelLeftGyroSlidesTurret(3, 0.3, 500, 0, 440, 0, false);
             drive.closeClaw();
 
+            drive.accelRightGyroSlidesTurret(3, 0.25, 900, 0.6, 440, 0, true);
+            drive.accelRightGyroSlidesTurret(6, 0.35, 150, 0.2, 880, 0.5, true);
+            drive.strafeIMUJunctionLeft(false, 0.25, stageSwitchingPipelineLeftSide);
+            drive.accelStraightGyroSlidesTurret(-4.5, 0.3, 1500, 0.8, 880, 0);
+            drive.moveSlidesToHeightABS(1425, 0.4);
+            drive.openClaw();
+            sleep(100);
 
-            //Move to the medium junction from the start and drop the cone
+             */
 
             if(tagOfInterest.id == LEFT)
-                drive.accelLeftGyroSlidesTurret(14, 0.5, 200, 0.4, 0, 0.6, true);
+                drive.accelLeftGyroSlidesTurret(12, 0.5, 300, 0.6, 0, 0.6, true);
                 //Move to square one
 
-            else if(tagOfInterest.id == MIDDLE)
-                drive.accelRightGyroSlidesTurret(14, 0.5, 200, 0.4, 0, 0.6, true);
+            else if(tagOfInterest.id == MIDDLE) {
+                drive.turnTankGyro(-2.75, 0.3);
+                drive.accelRightGyroSlidesTurret(14, 0.5, 300, 0.6, 0, 0.6, true);
+            }
                 //Move to square two
 
             else if(tagOfInterest.id == RIGHT) {
-                drive.accelRightGyroSlidesTurret(40, 0.8, 200, 0.4, 0, 0.7, true);
-                drive.accelStraightGyroSlidesTurret(-4, 0.3, 200, 0, 0, 0);
+                drive.turnTankGyro(-2.75, 0.3);
+                drive.accelRightGyroSlidesTurret(42, 0.8, 300, 0.4, 0, 0.7, true);
             }
             //Move to square three
-
-             */
         }
     }
 

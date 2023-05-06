@@ -91,16 +91,16 @@ public class SampleMecanumDrive extends MecanumDrive {
     public static final double INCREMENT   = 0.05;     // amount to slew servo each CYCLE_MS cycle
     public static final int    CYCLE_MS    =   30;     // period of each cycle
 
-    public static final double AMAX_POS = 0.50;     // Maximum rotational position ---- Phil Claw: 1.4; GoBilda Claw: 1.4
-    public static final double AMIN_POS = 0.25;     // Minimum rotational position ---- Phil Claw: 0.7; GoBilda Claw: 0.61
+    public static double AMAX_POS = 0.48;     // Maximum rotational position ---- Phil Claw: 1.4; GoBilda Claw: 1.4
+    public static double AMIN_POS = 0.21;     // Minimum rotational position ---- Phil Claw: 0.7; GoBilda Claw: 0.61
     public double  Aposition = AMIN_POS;                 // Start position
 
     public static final double BMAX_POS     =  1.00;     // Maximum rotational position
     public static final double BMIN_POS     =  0.40;     // Minimum rotational position
     public double  Bposition = BMIN_POS;                 // Start position
 
-    public static final double CLAW_OPEN_SETTING = AMAX_POS;
-    public static final double CLAW_CLOSED_SETTING = AMIN_POS;
+    public static double CLAW_OPEN_SETTING = AMAX_POS;
+    public static double CLAW_CLOSED_SETTING = AMIN_POS;
 
     Orientation lastAngles = new Orientation();
     double globalAngle, startAngle, endAngle, currentAngle;
@@ -367,8 +367,8 @@ public class SampleMecanumDrive extends MecanumDrive {
         slideLeft.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         slideRight.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
 
-        slideLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        slideRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        slideLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        slideRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
 
     public void resetTurret() {
@@ -594,7 +594,7 @@ public class SampleMecanumDrive extends MecanumDrive {
     }
 
     public void openClaw() {
-        Claw.setPosition(CLAW_OPEN_SETTING);
+        Claw.setPosition(AMAX_POS);
     }
 
     public void closeClaw() {
@@ -702,6 +702,53 @@ public class SampleMecanumDrive extends MecanumDrive {
                 rightFront.setPower(leftPower + correction);
                 leftRear.setPower(leftPower - correction);
                 rightRear.setPower(rightPower + correction);
+
+
+                if (valMid > 100) {
+                    stop();
+                    break;
+                }
+
+                opMode.telemetry.addData("valMid",  pipeline.getValMid());
+                opMode.telemetry.addData("Height", pipeline.getRows());
+                opMode.telemetry.addData("Width", pipeline.getCols());
+
+                opMode.telemetry.update();
+            }
+        }
+    }
+
+    public void moveIMUJunction(double maxDriveSpeed, StageSwitchingPipeline pipeline) { //True = left, False = right
+
+        int valMid;
+        double correction;
+
+        leftFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        resetAngle();
+
+        // Ensure that the opmode is still active
+        if (opMode.opModeIsActive()) {
+            leftFront.setPower(maxDriveSpeed);
+            rightFront.setPower(maxDriveSpeed);
+            leftRear.setPower(maxDriveSpeed);
+            rightRear.setPower(maxDriveSpeed);
+
+            while (true) {
+                correction = checkDirection();
+                valMid = pipeline.getValMid();
+
+                leftFront.setPower(maxDriveSpeed - correction);
+                rightFront.setPower(maxDriveSpeed + correction);
+                leftRear.setPower(maxDriveSpeed - correction);
+                rightRear.setPower(maxDriveSpeed + correction);
 
 
                 if (valMid > 100) {
@@ -1527,28 +1574,22 @@ public class SampleMecanumDrive extends MecanumDrive {
         opMode.sleep(150);
 
         // move slides
-        if (yesOrNo && slideLeft.getCurrentPosition() < slideHeight) {
+        if (slideLeft.getCurrentPosition() < slideHeight) {
             slideLeft.setPower(-slidePower);
             slideRight.setPower(-slidePower);
             up = true;
         }
-        else if (yesOrNo && slideLeft.getCurrentPosition() > slideHeight) {
+        else if (slideLeft.getCurrentPosition() > slideHeight) {
             slideLeft.setPower(slidePower);
             slideRight.setPower(slidePower);
             down = true;
         }
 
         //move turret
-        /* if (turret.getCurrentPosition() > turretPos) {
+        if (turret.getCurrentPosition() > turretPos)
             turret.setPower(-turretSpeed);
-            right = true;
-        }
-        else if (turret.getCurrentPosition() < turretPos) {
+        else if (turret.getCurrentPosition() < turretPos)
             turret.setPower(turretSpeed);
-            left = true;
-        }
-
-         */
 
         // Ensure that the opmode is still active
         if (opMode.opModeIsActive()) {
@@ -1692,7 +1733,6 @@ public class SampleMecanumDrive extends MecanumDrive {
         /* slideLeft.setTargetPosition((int) slideHeight);
         slideRight.setTargetPosition((int) -slideHeight);
 
-
         slideLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         slideRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
          */
@@ -1715,16 +1755,10 @@ public class SampleMecanumDrive extends MecanumDrive {
         }
 
         //move turret
-        /* if (turret.getCurrentPosition() > turretPos) {
+        if (turret.getCurrentPosition() > turretPos)
             turret.setPower(-turretSpeed);
-            right = true;
-        }
-        else if (turret.getCurrentPosition() < turretPos) {
+        else if (turret.getCurrentPosition() < turretPos)
             turret.setPower(turretSpeed);
-            left = true;
-        }
-
-         */
 
         // Ensure that the opmode is still active
         if (opMode.opModeIsActive()) {
@@ -1877,10 +1911,7 @@ public class SampleMecanumDrive extends MecanumDrive {
         float[] hsvValues = {0F, 0F, 0F};
         Color.RGBToHSV(colorSensor.red() * 8, colorSensor.green() * 8, colorSensor.blue() * 8, hsvValues);
         boolean seenCol = false;
-
         runtime.reset();
-
-
         if (isRed) {
             while(true) {
                 if (!frontOrBack) {
@@ -2105,6 +2136,8 @@ public class SampleMecanumDrive extends MecanumDrive {
         double power = drivePower;
         double motorDistance = (double) (inchesToDrive * WHEEL_COUNTS_PER_INCH);
         double correction;
+        boolean up = false;
+        boolean down = false;
 
         leftFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         rightFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -2115,12 +2148,12 @@ public class SampleMecanumDrive extends MecanumDrive {
         leftRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         rightRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
-        slideLeft.setTargetPosition((int) slideHeight);
-        slideRight.setTargetPosition((int) -slideHeight);
+        //slideLeft.setTargetPosition((int) slideHeight);
+        //slideRight.setTargetPosition((int) slideHeight);
         turret.setTargetPosition(turretPos);
 
-        slideLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        slideRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        //slideLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        //slideRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
 
         opMode.sleep(250);
@@ -2129,27 +2162,29 @@ public class SampleMecanumDrive extends MecanumDrive {
         if (opMode.opModeIsActive()) {
             opMode.sleep(500);
 
+            if (slideLeft.getCurrentPosition() < slideHeight) {
+                slideLeft.setPower(-slidePower);
+                slideRight.setPower(-slidePower);
+                up = true;
+            }
+            else if (slideLeft.getCurrentPosition() > slideHeight) {
+                slideLeft.setPower(slidePower);
+                slideRight.setPower(slidePower);
+                down = true;
+            }
+
             startMotorCounts = rightFront.getCurrentPosition();
             stopMotorCounts = startMotorCounts - (int) (inchesToDrive * STRAFE_COUNTS_PER_INCH);
             drive1 = 0.0;
             drive2 = power;
-            leftPower = Range.clip(drive1 + drive2, -1.0, 1.0);
-            rightPower = Range.clip(drive1 - drive2, -1.0, 1.0);
+            double lPower = Range.clip(drive1 + drive2, -1.0, 1.0);
+            double rPower = Range.clip(drive1 - drive2, -1.0, 1.0);
             // Send calculated power to wheels
-            leftFront.setPower(rightPower);
-            rightFront.setPower(leftPower);
-            leftRear.setPower(leftPower);
-            rightRear.setPower(rightPower);
+            leftFront.setPower(rPower);
+            rightFront.setPower(lPower);
+            leftRear.setPower(lPower);
+            rightRear.setPower(rPower);
 
-            // move slides
-            if (slideLeft.getCurrentPosition() < slideHeight) {
-                slideLeft.setPower(slidePower);
-                slideRight.setPower(-slidePower);
-            }
-            else if (slideLeft.getCurrentPosition() > slideHeight) {
-                slideLeft.setPower(-slidePower);
-                slideRight.setPower(slidePower);
-            }
 
             //move turret
             if (turret.getCurrentPosition() > turretPos)
@@ -2160,10 +2195,10 @@ public class SampleMecanumDrive extends MecanumDrive {
             while (true) {
 
                 correction = checkDirection();
-                leftFront.setPower(rightPower - correction);
-                rightFront.setPower(leftPower + correction);
-                leftRear.setPower(leftPower - correction);
-                rightRear.setPower(rightPower + correction);
+                leftFront.setPower(rPower - correction);
+                rightFront.setPower(lPower + correction);
+                leftRear.setPower(lPower - correction);
+                rightRear.setPower(rPower + correction);
 
                 Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
                 opMode.telemetry.addData("Gyro Angle", "(%.2f)", angles.firstAngle);
@@ -2173,6 +2208,15 @@ public class SampleMecanumDrive extends MecanumDrive {
                         -leftRear.getCurrentPosition(),
                         rightRear.getCurrentPosition());
                 opMode.telemetry.update();
+
+                if (up && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  >= slideHeight) {
+                    slideLeft.setPower(0.0);
+                    slideRight.setPower(0.0);
+                }
+                if (down && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  <= slideHeight) {
+                    slideLeft.setPower(0.0);
+                    slideRight.setPower(0.0);
+                }
 
                 // Stop when the bot has driven the requested distance
                 if (Math.abs(rightFront.getCurrentPosition()) >= Math.abs(stopMotorCounts)) {

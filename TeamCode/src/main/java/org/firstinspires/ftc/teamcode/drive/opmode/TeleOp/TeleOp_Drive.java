@@ -42,12 +42,17 @@ public class TeleOp_Drive extends LinearOpMode {
             drive.moveTurret();
 
             if (gamepad2.right_bumper)
-                drive.closeClaw();
-            if (gamepad2.left_bumper)
                 drive.openClaw();
+            if (gamepad2.left_bumper)
+                drive.closeClaw();
 
             if (gamepad1.y)
                 drive.resetSlides();
+
+            if (gamepad2.x)
+                SampleMecanumDrive.AMAX_POS = 0.53;
+            if (gamepad2.b)
+                SampleMecanumDrive.AMAX_POS = 0.48;
 
             /*if (gamepad2.y)
                 drive.moveTurretToPosition(0);
@@ -75,6 +80,7 @@ public class TeleOp_Drive extends LinearOpMode {
             telemetry.addData("x", poseEstimate.getX());
             telemetry.addData("y", poseEstimate.getY());
             telemetry.addData("heading", poseEstimate.getHeading());
+            telemetry.addData("claw pos", SampleMecanumDrive.AMAX_POS);
             telemetry.update();
         }
     }
