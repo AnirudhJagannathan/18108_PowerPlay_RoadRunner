@@ -159,25 +159,25 @@ public class RedLeftTest extends LinearOpMode {
             camera.setPipeline(stageSwitchingPipelineLeftSide);
 
             drive.accelStraightGyroSlidesTurret(38.5, 0.45, 1500, 0.8, 440,0.3);
-            drive.accelLeftGyroSlidesTurret(2.5, 0.3,1500, 0.2, 440, 0.3, false);
+            drive.accelLeftGyroSlidesTurret(2.5, 0.3,1500, 0.2, 440, 0.3);
             drive.moveSlidesToHeightABS(1425, 0.4);
             drive.openClaw();
             sleep(200);
             //Drop first cone in the junction
 
-            drive.accelRightGyroSlidesTurret(2, 0.3, 1425, 0.4, 440, 0.3, true);
+            drive.accelRightGyroSlidesTurret(2, 0.3, 1425, 0.4, 440, 0.3);
             drive.accelStraightGyroSlidesTurret(15, 0.5, 1425, 0, 440,0);
             drive.accelStraightGyroSlidesTurret(-3, 0.4, 1300, 0.4, 440,0);
-            drive.accelLeftGyroSlidesTurret(21, 0.7, 550, 0.5, 440, 0, true);
+            drive.accelLeftGyroSlidesTurret(21, 0.7, 550, 0.5, 440, 0);
             drive.accelStraightGyroSlidesTurret(0, 0, 550, 0, 440, 0.4);
             drive.accelStraightGyroSlidesTurret(0, 0, 500, 0, 440, 0);
             drive.coneLineDetect(true, true);
-            drive.accelLeftGyroSlidesTurret(3.5, 0.3, 550, 0, 440, 0, false);
+            drive.accelLeftGyroSlidesTurret(3.5, 0.3, 550, 0, 440, 0);
             drive.closeClaw();
             sleep(100);
 
-            drive.accelRightGyroSlidesTurret(3.5, 0.25, 900, 0.6, 440, 0, true);
-            drive.accelRightGyroSlidesTurret(4, 0.35, 150, 0.2, 880, 0.5, true);
+            drive.accelRightGyroSlidesTurret(3.5, 0.25, 900, 0.6, 440, 0);
+            drive.accelRightGyroSlidesTurret(4, 0.35, 150, 0.2, 880, 0.5);
             drive.strafeIMUJunctionLeft(false, 0.25, stageSwitchingPipelineLeftSide);
             drive.accelStraightGyroSlidesTurret(-5, 0.3, 1500, 0.8, 880, 0);
             drive.moveSlidesToHeightABS(1425, 0.4);
@@ -185,14 +185,14 @@ public class RedLeftTest extends LinearOpMode {
             sleep(100);
 
             drive.accelStraightGyroSlidesTurret(2.5, 0.3, 1425, 0, 440, 0.4);
-            drive.accelLeftGyroSlidesTurret(8, 0.3, 500, 0.7, 440, 0.4, true);
+            drive.accelLeftGyroSlidesTurret(8, 0.3, 500, 0.7, 440, 0.4);
             drive.accelStraightGyroSlidesTurret(0, 0, 500, 0, 440, 0);
             drive.coneLineDetect(true, true);
-            drive.accelLeftGyroSlidesTurret(3, 0.3, 500, 0, 440, 0, false);
+            drive.accelLeftGyroSlidesTurret(3, 0.3, 500, 0, 440, 0);
             drive.closeClaw();
 
-            drive.accelRightGyroSlidesTurret(3.5, 0.25, 900, 0.6, 440, 0, true);
-            drive.accelRightGyroSlidesTurret(4, 0.25, 150, 0.2, 880, 0.5, true);
+            drive.accelRightGyroSlidesTurret(3.5, 0.25, 900, 0.6, 440, 0);
+            drive.accelRightGyroSlidesTurret(4, 0.25, 150, 0.2, 880, 0.5);
             drive.strafeIMUJunctionLeft(false, 0.25, stageSwitchingPipelineLeftSide);
             drive.accelStraightGyroSlidesTurret(-5, 0.3, 1500, 0.8, 880, 0);
             drive.moveSlidesToHeightABS(1425, 0.4);
@@ -216,18 +216,18 @@ public class RedLeftTest extends LinearOpMode {
              */
 
             if(tagOfInterest.id == LEFT)
-                drive.accelLeftGyroSlidesTurret(12, 0.5, 300, 0.6, 0, 0.6, true);
+                drive.accelLeftGyroSlidesTurret(12, 0.5, 300, 0.6, 0, 0.6);
                 //Move to square one
 
             else if(tagOfInterest.id == MIDDLE) {
                 drive.turnTankGyro(-2.75, 0.3);
-                drive.accelRightGyroSlidesTurret(14, 0.5, 300, 0.6, 0, 0.6, true);
+                drive.accelRightGyroSlidesTurret(14, 0.5, 300, 0.6, 0, 0.6);
             }
                 //Move to square two
 
             else if(tagOfInterest.id == RIGHT) {
                 drive.turnTankGyro(-2.75, 0.3);
-                drive.accelRightGyroSlidesTurret(42, 0.8, 300, 0.4, 0, 0.7, true);
+                drive.accelRightGyroSlidesTurret(42, 0.8, 300, 0.4, 0, 0.7);
             }
             //Move to square three
         }

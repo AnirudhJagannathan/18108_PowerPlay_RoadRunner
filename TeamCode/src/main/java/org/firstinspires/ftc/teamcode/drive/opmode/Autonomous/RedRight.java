@@ -149,8 +149,16 @@ public class RedRight extends LinearOpMode {
             drive.resetSlides();
             drive.resetTurret();
 
-            drive.accelLeftGyroSlidesTurret(12, 0.3,  1000, 0.5, 440, 0.3, true);
-            drive.accelRightGyroSlidesTurret(12, 0.3, 1000, 0.5, 440, 0.3, true);
+            /* drive.slideTest(1000, 0.5);
+            drive.slideTest(2000, 0.7);
+            drive.slideTest(500, 0.4);
+             */
+
+            drive.accelStraightGyroSlidesTurret(10, 0.3, 2000, 0.6, 0, 0);
+            drive.accelStraightGyroSlidesTurret(-5, 0.3, 1000, 0.4, 0, 0);
+
+            //drive.moveSlidesToHeightABS(1000, 0.3);
+            //drive.accelStraightGyroSlidesTurret(10, 0.45, 1000, 0.5, -440,0.3);
         }
 
         else if (tagOfInterest != null) {
@@ -160,14 +168,43 @@ public class RedRight extends LinearOpMode {
             drive.closeClaw();
             camera.setPipeline(stageSwitchingPipeline);
 
-            drive.accelStraightGyroSlidesTurret(35, 0.45, 1000, 0.8, 420,0.3);
-            sleep(500);
+            drive.accelStraightGyroSlidesTurret(36, 0.45, 900, 0.8, 420,0.3);
+            sleep(300);
             drive.moveIMUJunction(0.15, stageSwitchingPipeline);
-            //drive.accelLeftGyroSlidesTurret(3, 0.15, 2500, 0.8, 420, 0, false);
-            drive.strafeLeftGyroSlidesTurret(3, 0.3, 2550, 0.8, 420, 0);
+            drive.strafeLeftGyroSlidesTurret(3, 0.3, 2600, 0.7, 420, 0);
             sleep(200);
-            drive.moveSlidesToHeightABS(2450, 0.3);
+            drive.moveSlidesToHeightABS(2350, 0.3);
             drive.openClaw();
+            sleep(200);
+            //Drop cone on the first medium junction
+
+            drive.accelStraightGyroSlidesTurret(14.5, 0.45, 2000, 0, 0,0.3);
+            drive.accelStraightGyroSlidesTurret(-1.5, 0.45, 2000, 0, 0, 0.3);
+            sleep(200);
+            drive.accelRightGyroSlidesTurret(29.5, 0.6, 800, 0.5, -420, 0.3);
+            sleep(200);
+            drive.closeClaw();
+            sleep(200);
+            drive.moveSlidesToHeightABS(1500, 0.3);
+            sleep(100);
+
+            drive.accelLeftGyroSlidesTurret(13, 0.5, 1700, 0.5, -880, 0.4);
+            drive.driveStraightGyroSlidesTurret(-2, 0.45, 1000, 0.4, -880, 0.0);
+            drive.openClaw();
+            sleep(200);
+
+            drive.driveStraightGyroSlidesTurret(2, 0.45, 800, 0, -420, 0.3);
+            drive.accelRightGyroSlidesTurret(13, 0.5, 800, 0.5, -420, 0.4);
+            drive.closeClaw();
+            sleep(200);
+            drive.moveSlidesToHeightABS(1500, 0.3);
+
+
+
+
+
+
+
 
             /*
             drive.moveSlidesToHeightABS(2450, 0.4);

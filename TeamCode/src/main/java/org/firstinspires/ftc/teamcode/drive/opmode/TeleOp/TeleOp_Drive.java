@@ -49,8 +49,11 @@ public class TeleOp_Drive extends LinearOpMode {
             if (gamepad1.y)
                 drive.resetSlides();
 
-            if (gamepad2.x)
+            if (gamepad2.x) {
                 SampleMecanumDrive.AMAX_POS = 0.53;
+                drive.openClaw();
+                SampleMecanumDrive.AMAX_POS = 0.48;
+            }
             if (gamepad2.b)
                 SampleMecanumDrive.AMAX_POS = 0.48;
 
