@@ -271,7 +271,7 @@ public class SampleMecanumDrive extends MecanumDrive {
         );
     }
 
-    private void resetAngle() {
+    public void resetAngle() {
         lastAngles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX,
                 AngleUnit.DEGREES);
         globalAngle = 0;
@@ -319,49 +319,6 @@ public class SampleMecanumDrive extends MecanumDrive {
         return correction;
     }
 
-    public void moveSlidesToHeightABS(int motorSlideEncoderCounts, double slidePower) {
-        double currentTime = runtime.time();
-        boolean up = false;
-        boolean down = false;
-
-        // opMode.sleep(500);
-
-        /* slideLeft.setTargetPosition(motorSlideEncoderCounts);
-        slideRight.setTargetPosition(motorSlideEncoderCounts);
-
-        slideLeft.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
-        slideRight.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
-
-        slideLeft.setPower(-0.5);
-        slideRight.setPower(0.5);
-
-         */
-
-        // move slides
-        if (slideLeft.getCurrentPosition() < motorSlideEncoderCounts) {
-            slideLeft.setPower(-slidePower);
-            slideRight.setPower(-slidePower);
-            up = true;
-        }
-        else if (slideLeft.getCurrentPosition() > motorSlideEncoderCounts) {
-            slideLeft.setPower(slidePower);
-            slideRight.setPower(slidePower);
-            down =  true;
-        }
-
-        while (true) {
-            if (up && (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2 > motorSlideEncoderCounts) {
-                slideLeft.setPower(0.0);
-                slideRight.setPower(0.0);
-                break;
-            }
-            else if (down && (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2 < motorSlideEncoderCounts) {
-                slideLeft.setPower(0.0);
-                slideRight.setPower(0.0);
-                break;
-            }
-        }
-    }
 
     public void resetSlides() {
         slideLeft.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
@@ -503,46 +460,6 @@ public class SampleMecanumDrive extends MecanumDrive {
 
          */
 
-    public void moveSlidesToHeight(int motorSlideEncoderCounts) {
-        double currentTime = runtime.time();
-
-        opMode.sleep(500);
-
-        slideLeft.setTargetPosition(motorSlideEncoderCounts);
-        slideRight.setTargetPosition(motorSlideEncoderCounts);
-
-        slideLeft.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
-        slideRight.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
-
-        if (slideLeft.getCurrentPosition() < motorSlideEncoderCounts) {
-            slideLeft.setPower(0.5);
-            slideRight.setPower(0.5);
-        } else {
-            slideLeft.setPower(-0.5);
-            slideRight.setPower(-0.5);
-        }
-
-        if (slideRight.getCurrentPosition() < motorSlideEncoderCounts) {
-            while ((slideRight.getCurrentPosition() <= motorSlideEncoderCounts)) {
-                opMode.telemetry.addData("Slide Pos: ", slideRight.getCurrentPosition());
-                opMode.telemetry.update();
-            }
-        }
-        else {
-            while (slideRight.getCurrentPosition() >= motorSlideEncoderCounts) {
-                opMode.telemetry.addData("Slide Pos: ", slideRight.getCurrentPosition());
-                opMode.telemetry.update();
-            }
-        }
-
-        slideLeft.setPower(0.0);
-        slideRight.setPower(0.0);
-
-        slideLeft.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
-        slideRight.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
-
-    }
-
     public void moveTurret() throws InterruptedException {
         double turretPower = Range.clip(opMode.gamepad2.left_stick_x, -1.0, 1.0);
         double turretPos = turret.getCurrentPosition();
@@ -552,7 +469,7 @@ public class SampleMecanumDrive extends MecanumDrive {
             turret.setPower(0);
         }
         else {
-            turret.setPower(-0.45 * turretPower);
+            turret.setPower(-0.6 * turretPower);
         }
     }
 
@@ -672,12 +589,8 @@ public class SampleMecanumDrive extends MecanumDrive {
         leftRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         rightRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
-        resetAngle();
-
         // Ensure that the opmode is still active
         if (opMode.opModeIsActive()) {
-            opMode.sleep(500);
-
             drive1 = 0.0;
             if (leftOrRight){
                 drive2 = maxDriveSpeed;
@@ -788,7 +701,6 @@ public class SampleMecanumDrive extends MecanumDrive {
 
         // Ensure that the opmode is still active
         if (opMode.opModeIsActive()) {
-            opMode.sleep(500);
 
             drive1 = 0.0;
             if (leftOrRight){
@@ -834,10 +746,6 @@ public class SampleMecanumDrive extends MecanumDrive {
         }
     }
 
-    public void lineAlign(boolean fOrB) {
-
-    }
-
     public void turnTankGyro(double angleToTurn, double anglePower) {
         double angle = angleToTurn;
         double power = anglePower;
@@ -864,7 +772,7 @@ public class SampleMecanumDrive extends MecanumDrive {
         currentAngle = getAngle();
         startAngle = currentAngle;
 
-        opMode.sleep(250);
+        opMode.sleep(150);
 
         if (angle <= 0) {
             // Start Right turn
@@ -1133,25 +1041,38 @@ public class SampleMecanumDrive extends MecanumDrive {
         slideRight.setTargetPosition((int) slideHeight);
         turret.setTargetPosition(turretPos);
 
-        slideLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        slideRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        //slideLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        //slideRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
 
         // move slides
         if (slideLeft.getCurrentPosition() < slideHeight) {
-            slideLeft.setPower(slidePower);
-            slideRight.setPower(slidePower);
-        }
-        else if (slideLeft.getCurrentPosition() > slideHeight) {
             slideLeft.setPower(-slidePower);
             slideRight.setPower(-slidePower);
+        }
+        else if (slideLeft.getCurrentPosition() > slideHeight) {
+            slideLeft.setPower(slidePower);
+            slideRight.setPower(slidePower);
         }
 
         //move turret
         if (turret.getCurrentPosition() > turretPos)
-            turret.setPower(turretSpeed);
+            turret.setPower(-turretSpeed);
         else if (turret.getCurrentPosition() < turretPos)
             turret.setPower(turretSpeed);
+
+        while (slideLeft.getCurrentPosition() < slideHeight - 10 || slideLeft.getCurrentPosition() > slideHeight + 10) {
+            opMode.telemetry.addData("Encoders:", "M0: %3d  M1:%3d  M2:%3d  M3:%3d",
+                    leftFront.getCurrentPosition(),
+                    rightFront.getCurrentPosition(),
+                    leftRear.getCurrentPosition(),
+                    rightRear.getCurrentPosition());
+            opMode.telemetry.update();
+        }
+
+        slideLeft.setPower(0);
+        slideRight.setPower(0);
+        turret.setPower(0);
     }
 
     public void driveStraightGyroSlidesTurret(double inchesToDrive, double drivePower, double slideHeight, double slidePower, int turretPos, double turretSpeed) {
@@ -1159,6 +1080,8 @@ public class SampleMecanumDrive extends MecanumDrive {
         double power = drivePower;
         double motorDistance = (double) (inchesToDrive * WHEEL_COUNTS_PER_INCH);
         double correction = 0.02;
+        boolean up = false;
+        boolean down = false;
 
         leftFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         rightFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -1173,36 +1096,29 @@ public class SampleMecanumDrive extends MecanumDrive {
         slideRight.setTargetPosition((int) slideHeight);
         turret.setTargetPosition(turretPos);
 
-        slideLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        slideRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        //slideLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        //slideRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        resetAngle();
 
-        opMode.sleep(250);
+        // move slides
+        if (slideLeft.getCurrentPosition() < slideHeight) {
+            slideLeft.setPower(-slidePower);
+            slideRight.setPower(-slidePower);
+            up = true;
+        }
+        else if (slideLeft.getCurrentPosition() > slideHeight) {
+            slideLeft.setPower(slidePower);
+            slideRight.setPower(slidePower);
+            down = true;
+        }
+
+        //move turret
+        if (turret.getCurrentPosition() > turretPos)
+            turret.setPower(-turretSpeed);
+        else if (turret.getCurrentPosition() < turretPos)
+            turret.setPower(turretSpeed);
 
         if (motorDistance >= 0) {
-            // Start driving forward
-            leftFront.setPower(0.25);
-            rightFront.setPower(0.25);
-            leftRear.setPower(0.25);
-            rightRear.setPower(0.25);
-
-            // move slides
-            if (slideLeft.getCurrentPosition() < slideHeight) {
-                slideLeft.setPower(slidePower);
-                slideRight.setPower(slidePower);
-            }
-            else if (slideLeft.getCurrentPosition() > slideHeight) {
-                slideLeft.setPower(-slidePower);
-                slideRight.setPower(-slidePower);
-            }
-
-            //move turret
-            if (turret.getCurrentPosition() > turretPos)
-                turret.setPower(-turretSpeed);
-            else if (turret.getCurrentPosition() < turretPos)
-                turret.setPower(turretSpeed);
-
             while (true) {
                 // telemetry.addData("leftFront",  "Distance: %3d", leftFront.getCurrentPosition());
                 // telemetry.update();
@@ -1227,10 +1143,14 @@ public class SampleMecanumDrive extends MecanumDrive {
                 opMode.telemetry.addData("slidePower", slidePower);
                 opMode.telemetry.update();
 
-                /* if ((slidePower > 0 && slideLeft.getCurrentPosition() >= slideHeight) || (slidePower < 0 && slideLeft.getCurrentPosition() <= slideHeight)){
+                if (up && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  >= slideHeight) {
                     slideLeft.setPower(0.0);
                     slideRight.setPower(0.0);
-                } */
+                }
+                if (down && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  <= slideHeight) {
+                    slideLeft.setPower(0.0);
+                    slideRight.setPower(0.0);
+                }
 
                 // Stop driving when Motor Encoder Avg. >= motorDistance
                 if ((Math.abs(leftFront.getCurrentPosition()) + Math.abs(rightFront.getCurrentPosition()) +
@@ -1245,12 +1165,6 @@ public class SampleMecanumDrive extends MecanumDrive {
             }
         }
         if (motorDistance < 0) {
-            // Start driving backward
-            leftFront.setPower(-power);
-            rightFront.setPower(-power);
-            leftRear.setPower(-power);
-            rightRear.setPower(-power);
-
             while (true) {
                 // telemetry.addData("leftFront",  "Distance: %3d", leftFront.getCurrentPosition());
                 // telemetry.update();
@@ -1270,6 +1184,15 @@ public class SampleMecanumDrive extends MecanumDrive {
                         rightRear.getCurrentPosition());
                 opMode.telemetry.update();
 
+                if (up && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  >= slideHeight) {
+                    slideLeft.setPower(0.0);
+                    slideRight.setPower(0.0);
+                }
+                if (down && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  <= slideHeight) {
+                    slideLeft.setPower(0.0);
+                    slideRight.setPower(0.0);
+                }
+
                 // Stop driving when Motor Encoder Avg. <= motorDistance
                 if ((Math.abs(leftFront.getCurrentPosition()) + Math.abs(rightFront.getCurrentPosition()) +
                         Math.abs(leftRear.getCurrentPosition()) + Math.abs(rightRear.getCurrentPosition()) / 4.0
@@ -1282,9 +1205,32 @@ public class SampleMecanumDrive extends MecanumDrive {
                 }
             }
         }
+        if (slidePower != 0) {
+            while (true) {
+                if (up && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2 >= slideHeight) {
+                    slideLeft.setPower(0.0);
+                    slideRight.setPower(0.0);
+                    break;
+                }
+                if (down && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2 <= slideHeight) {
+                    slideLeft.setPower(0.0);
+                    slideRight.setPower(0.0);
+                    break;
+                }
+                opMode.telemetry.addData("slidePos", "position: %3d", slideLeft.getCurrentPosition());
+                opMode.telemetry.addData("turretPos", "position: %3d", turret.getCurrentPosition());
+                opMode.telemetry.update();
+            }
+        }
+
+        turret.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        slideLeft.setPower(0);
+        slideRight.setPower(0);
+        turret.setPower(0);
     }
 
-    public void slideTest(int encoderPos, double power) {
+    public void moveSlidesToHeightABS(int encoderPos, double power) {
         slideLeft.setTargetPosition(encoderPos);
         slideRight.setTargetPosition(encoderPos);
 
@@ -1298,8 +1244,8 @@ public class SampleMecanumDrive extends MecanumDrive {
             }
         }
 
-        //slideLeft.setPower(0);
-        //slideRight.setPower(0);
+        slideLeft.setPower(0);
+        slideRight.setPower(0);
     }
 
     public void accelStraightGyroSlidesTurret(double inchesToDrive, double drivePower, double slideHeight, double slidePower, int turretPos, double turretSpeed) {
@@ -1313,7 +1259,6 @@ public class SampleMecanumDrive extends MecanumDrive {
         boolean down = false;
         boolean left = false;
         boolean right = false;
-
 
 
         leftFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -1333,10 +1278,7 @@ public class SampleMecanumDrive extends MecanumDrive {
         //slideRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
 
-
-        resetAngle();
-
-        opMode.sleep(250);
+        opMode.sleep(150);
 
         // move slides
         if (slideLeft.getCurrentPosition() < slideHeight) {
@@ -1358,7 +1300,6 @@ public class SampleMecanumDrive extends MecanumDrive {
         }
 
         if (motorDistance > 0) {
-
             while (true) {
                 // telemetry.addData("leftFront",  "Distance: %3d", leftFront.getCurrentPosition());
                 // telemetry.update();
@@ -1381,11 +1322,10 @@ public class SampleMecanumDrive extends MecanumDrive {
                             slideLeft.setPower(0.0);
                             slideRight.setPower(0.0);
                         }
-                        /* if (left && (double) turret.getCurrentPosition() >= turretPos)
+                        /* if ((double) turret.getCurrentPosition() >= turretPos)
                             turret.setPower(0.0);
-                        if (right && (double) turret.getCurrentPosition() <= turretPos)
+                        if ((double) turret.getCurrentPosition() <= turretPos)
                             turret.setPower(0.0);
-
                          */
                     }
                 }
@@ -1408,7 +1348,6 @@ public class SampleMecanumDrive extends MecanumDrive {
                     turret.setPower(0.0);
                 if (right && (double) turret.getCurrentPosition() <= turretPos)
                     turret.setPower(0.0);
-
                  */
 
                 Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
@@ -1442,11 +1381,10 @@ public class SampleMecanumDrive extends MecanumDrive {
                             slideLeft.setPower(0.0);
                             slideRight.setPower(0.0);
                         }
-                        /* if (left && (double) turret.getCurrentPosition() >= turretPos)
+                        /* if ((double) turret.getCurrentPosition() >= turretPos)
                             turret.setPower(0.0);
-                        if (right && (double) turret.getCurrentPosition() <= turretPos)
+                        if ((double) turret.getCurrentPosition() <= turretPos)
                             turret.setPower(0.0);
-
                          */
                     }
                 }
@@ -1465,7 +1403,6 @@ public class SampleMecanumDrive extends MecanumDrive {
         }
 
         if (motorDistance < 0) {
-
             while (true) {
                 // telemetry.addData("leftFront",  "Distance: %3d", leftFront.getCurrentPosition());
                 // telemetry.update();
@@ -1492,7 +1429,6 @@ public class SampleMecanumDrive extends MecanumDrive {
                             turret.setPower(0.0);
                         if (right && (double) turret.getCurrentPosition() <= turretPos)
                             turret.setPower(0.0);
-
                          */
                     }
                 }
@@ -1511,11 +1447,11 @@ public class SampleMecanumDrive extends MecanumDrive {
                     slideLeft.setPower(0.0);
                     slideRight.setPower(0.0);
                 }
+
                 /* if (left && (double) turret.getCurrentPosition() >= turretPos)
                     turret.setPower(0.0);
                 if (right && (double) turret.getCurrentPosition() <= turretPos)
                     turret.setPower(0.0);
-
                  */
 
                 Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
@@ -1539,11 +1475,11 @@ public class SampleMecanumDrive extends MecanumDrive {
                         leftRear.setPower(-j * (power + correction));
                         rightRear.setPower(-j * (power - correction));
                         state2 = false;
-                        if (up && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  >= slideHeight) {
+                        if (up && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2 >= slideHeight) {
                             slideLeft.setPower(0.0);
                             slideRight.setPower(0.0);
                         }
-                        if (down && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2  <= slideHeight) {
+                        if (down && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2 <= slideHeight) {
                             slideLeft.setPower(0.0);
                             slideRight.setPower(0.0);
                         }
@@ -1568,16 +1504,38 @@ public class SampleMecanumDrive extends MecanumDrive {
                 }
             }
         }
-        while (slideLeft.getCurrentPosition() < slideHeight - 10 || slideLeft.getCurrentPosition() > slideHeight + 10) {
-            opMode.telemetry.addData("Encoders:", "M0: %3d  M1:%3d  M2:%3d  M3:%3d",
-                    leftFront.getCurrentPosition(),
-                    rightFront.getCurrentPosition(),
-                    leftRear.getCurrentPosition(),
-                    rightRear.getCurrentPosition());
-            opMode.telemetry.update();
+        if (slidePower != 0) {
+            while (true) {
+                if (slideLeft.getCurrentPosition() < slideHeight) {
+                    slideLeft.setPower(-slidePower);
+                    slideRight.setPower(-slidePower);
+                    up = true;
+                } else {
+                    slideLeft.setPower(slidePower);
+                    slideRight.setPower(slidePower);
+                    down = true;
+                }
+                if (up && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2 >= slideHeight) {
+                    slideLeft.setPower(0.0);
+                    slideRight.setPower(0.0);
+                    break;
+                }
+                if (down && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2 <= slideHeight) {
+                    slideLeft.setPower(0.0);
+                    slideRight.setPower(0.0);
+                    break;
+                }
+                opMode.telemetry.addData("slidePos", "position: %3d", slideLeft.getCurrentPosition());
+                opMode.telemetry.addData("turretPos", "position: %3d", turret.getCurrentPosition());
+                opMode.telemetry.update();
+            }
         }
+
+        turret.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
         slideLeft.setPower(0);
         slideRight.setPower(0);
+        turret.setPower(0);
     }
 
     public void accelLeftGyroSlidesTurret(double inchesToDrive, double drivePower, double slideHeight, double slidePower, int turretPos, double turretSpeed) {
@@ -1603,11 +1561,11 @@ public class SampleMecanumDrive extends MecanumDrive {
 
         slideLeft.setTargetPosition((int) slideHeight);
         slideRight.setTargetPosition((int) slideHeight);
+        turret.setTargetPosition(turretPos);
 
         //slideLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         //slideRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
 
-        turret.setTargetPosition(turretPos);
         turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
 
         opMode.sleep(150);
@@ -1628,10 +1586,11 @@ public class SampleMecanumDrive extends MecanumDrive {
             turret.setPower(-turretSpeed);
         else if (turret.getCurrentPosition() < turretPos)
             turret.setPower(turretSpeed);
+        else if (turret.getCurrentPosition() == turretPos)
+            turret.setPower(0);
 
         // Ensure that the opmode is still active
         if (opMode.opModeIsActive()) {
-            opMode.sleep(200);
 
             startMotorCounts = rightFront.getCurrentPosition();
             stopMotorCounts = startMotorCounts + (int) (inchesToDrive * STRAFE_COUNTS_PER_INCH);
@@ -1744,16 +1703,38 @@ public class SampleMecanumDrive extends MecanumDrive {
                     break;
                 }
             }
-            while (slideLeft.getCurrentPosition() < slideHeight - 10 || slideLeft.getCurrentPosition() > slideHeight + 10) {
-                opMode.telemetry.addData("Encoders:", "M0: %3d  M1:%3d  M2:%3d  M3:%3d",
-                        leftFront.getCurrentPosition(),
-                        rightFront.getCurrentPosition(),
-                        leftRear.getCurrentPosition(),
-                        rightRear.getCurrentPosition());
-                opMode.telemetry.update();
+            if (slidePower != 0) {
+                while (true) {
+                    if (slideLeft.getCurrentPosition() < slideHeight) {
+                        slideLeft.setPower(-slidePower);
+                        slideRight.setPower(-slidePower);
+                        up = true;
+                    } else {
+                        slideLeft.setPower(slidePower);
+                        slideRight.setPower(slidePower);
+                        down = true;
+                    }
+                    if (up && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2 >= slideHeight) {
+                        slideLeft.setPower(0.0);
+                        slideRight.setPower(0.0);
+                        break;
+                    }
+                    if (down && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2 <= slideHeight) {
+                        slideLeft.setPower(0.0);
+                        slideRight.setPower(0.0);
+                        break;
+                    }
+                    opMode.telemetry.addData("slidePos", "position: %3d", slideLeft.getCurrentPosition());
+                    opMode.telemetry.addData("turretPos", "position: %3d", turret.getCurrentPosition());
+                    opMode.telemetry.update();
+                }
             }
+
+            turret.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
             slideLeft.setPower(0);
             slideRight.setPower(0);
+            turret.setPower(0);
         }
     }
 
@@ -1779,7 +1760,7 @@ public class SampleMecanumDrive extends MecanumDrive {
         rightRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         slideLeft.setTargetPosition((int) slideHeight);
-        slideRight.setTargetPosition((int) -slideHeight);
+        slideRight.setTargetPosition((int) slideHeight);
 
         //slideLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         //slideRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
@@ -1810,7 +1791,6 @@ public class SampleMecanumDrive extends MecanumDrive {
 
         // Ensure that the opmode is still active
         if (opMode.opModeIsActive()) {
-            opMode.sleep(200);
 
             startMotorCounts = rightFront.getCurrentPosition();
             stopMotorCounts = startMotorCounts - (inchesToDrive * STRAFE_COUNTS_PER_INCH);
@@ -1922,16 +1902,38 @@ public class SampleMecanumDrive extends MecanumDrive {
                     break;
                 }
             }
-            while (slideLeft.getCurrentPosition() < slideHeight - 10 || slideLeft.getCurrentPosition() > slideHeight + 10) {
-                opMode.telemetry.addData("Encoders:", "M0: %3d  M1:%3d  M2:%3d  M3:%3d",
-                        leftFront.getCurrentPosition(),
-                        rightFront.getCurrentPosition(),
-                        leftRear.getCurrentPosition(),
-                        rightRear.getCurrentPosition());
-                opMode.telemetry.update();
+            if (slidePower != 0) {
+                while (true) {
+                    if (slideLeft.getCurrentPosition() < slideHeight) {
+                        slideLeft.setPower(-slidePower);
+                        slideRight.setPower(-slidePower);
+                        up = true;
+                    } else {
+                        slideLeft.setPower(slidePower);
+                        slideRight.setPower(slidePower);
+                        down = true;
+                    }
+                    if (up && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2 >= slideHeight) {
+                        slideLeft.setPower(0.0);
+                        slideRight.setPower(0.0);
+                        break;
+                    }
+                    if (down && (double) (slideLeft.getCurrentPosition() + slideRight.getCurrentPosition()) / 2 <= slideHeight) {
+                        slideLeft.setPower(0.0);
+                        slideRight.setPower(0.0);
+                        break;
+                    }
+                    opMode.telemetry.addData("slidePos", "position: %3d", slideLeft.getCurrentPosition());
+                    opMode.telemetry.addData("turretPos", "position: %3d", turret.getCurrentPosition());
+                    opMode.telemetry.update();
+                }
             }
+
+            turret.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
             slideLeft.setPower(0);
             slideRight.setPower(0);
+            turret.setPower(0);
         }
     }
 
@@ -2002,20 +2004,6 @@ public class SampleMecanumDrive extends MecanumDrive {
                     if ((seenCol) && (hsvValues[0] < 2 || hsvValues[0] > 65)) // If the robot is starting on red, it'll stop once it reaches the gray again
                         break;
 
-                    if (runtime.seconds() > 3) {
-                        Color.RGBToHSV(colorSensor.red() * 8, colorSensor.green() * 8, colorSensor.blue() * 8, hsvValues);
-                        leftFront.setPower(0.1);
-                        rightFront.setPower(0.1);
-                        leftRear.setPower(0.1);
-                        rightRear.setPower(0.1);
-                        opMode.telemetry.addData("Hue", hsvValues[0]);
-                        opMode.telemetry.update();
-
-                        if (hsvValues[0] > 2 || hsvValues[0] < 65){
-                            stop();
-                            break;
-                        }
-                    }
                 } else {
                     Color.RGBToHSV(colorSensor.red() * 8, colorSensor.green() * 8, colorSensor.blue() * 8, hsvValues);
                     leftFront.setPower(0.1);
