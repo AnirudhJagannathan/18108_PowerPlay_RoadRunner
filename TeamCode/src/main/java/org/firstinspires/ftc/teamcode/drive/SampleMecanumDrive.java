@@ -682,6 +682,53 @@ public class SampleMecanumDrive extends MecanumDrive {
         }
     }
 
+    public void moveIMUJunctionLeft(double maxDriveSpeed, StageSwitchingPipelineLeftSide pipeline) { //True = left, False = right
+
+        int valMid;
+        double correction;
+
+        leftFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        leftRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        resetAngle();
+
+        // Ensure that the opmode is still active
+        if (opMode.opModeIsActive()) {
+            leftFront.setPower(maxDriveSpeed);
+            rightFront.setPower(maxDriveSpeed);
+            leftRear.setPower(maxDriveSpeed);
+            rightRear.setPower(maxDriveSpeed);
+
+            while (true) {
+                correction = checkDirection();
+                valMid = pipeline.getValMid();
+
+                leftFront.setPower(maxDriveSpeed - correction);
+                rightFront.setPower(maxDriveSpeed + correction);
+                leftRear.setPower(maxDriveSpeed - correction);
+                rightRear.setPower(maxDriveSpeed + correction);
+
+
+                if (valMid > 100) {
+                    stop();
+                    break;
+                }
+
+                opMode.telemetry.addData("valMid",  pipeline.getValMid());
+                opMode.telemetry.addData("Height", pipeline.getRows());
+                opMode.telemetry.addData("Width", pipeline.getCols());
+
+                opMode.telemetry.update();
+            }
+        }
+    }
+
     public void strafeIMUJunctionLeft(boolean leftOrRight,
                                   double maxDriveSpeed, StageSwitchingPipelineLeftSide pipeline) { //True = left, False = right
 
