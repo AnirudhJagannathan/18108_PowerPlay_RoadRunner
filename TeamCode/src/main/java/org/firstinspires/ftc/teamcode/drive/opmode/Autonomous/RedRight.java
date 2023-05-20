@@ -162,7 +162,7 @@ public class RedRight extends LinearOpMode {
             drive.closeClaw();
             camera.setPipeline(stageSwitchingPipeline);
 
-            drive.accelStraightGyroSlidesTurret(36.98, 0.5, 900, 0.8, 440,0.3);
+            drive.accelStraightGyroSlidesTurret(37, 0.5, 900, 0.8, 440,0.3);
             sleep(100);
             drive.moveIMUJunction(0.15, stageSwitchingPipeline);
             drive.accelLeftGyroSlidesTurret(2, 0.3, 2550, 0.7, 440, 0);
@@ -190,7 +190,7 @@ public class RedRight extends LinearOpMode {
             drive.closeClaw();
             sleep(200);
             drive.moveSlidesToHeightABS(1250, 0.65);
-            drive.accelLeftGyroSlidesTurret(38.5, 0.8, 1050, 0.2, -880, 0.3);
+            drive.accelLeftGyroSlidesTurret(37, 0.8, 1050, 0.2, -880, 0.3);
 
             camera.setPipeline(stageSwitchingPipelineLeftSide);
             drive.strafeIMUJunctionLeft(true, 0.2, stageSwitchingPipelineLeftSide);

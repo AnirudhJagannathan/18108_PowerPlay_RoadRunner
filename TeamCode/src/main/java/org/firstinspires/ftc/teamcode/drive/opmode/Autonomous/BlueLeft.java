@@ -195,7 +195,7 @@ public class BlueLeft extends LinearOpMode {
             drive.accelStraightGyroSlidesTurret(-3, 0.2, 2550, 0.9, 880, 0);
             drive.moveSlidesToHeightABS(2300, 0.3);
             drive.openClaw();
-
+            
             drive.driveStraightGyroSlidesTurret(4, 0.3, 450, 0.4, 420, 0.3);
             // drive.turnTankGyro(-2.5, 0.3);
             drive.accelLeftGyroSlidesTurret(41, 0.85, 450, 0, 420, 0.4);
