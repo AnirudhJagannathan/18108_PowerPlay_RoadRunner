@@ -161,17 +161,17 @@ public class RedLeft extends LinearOpMode {
 
             drive.accelStraightGyroSlidesTurret(39, 0.5, 900, 0.8, -440,0.3);
             sleep(100);
-            drive.moveIMUJunctionLeft(0.15, stageSwitchingPipelineLeftSide);
-            drive.accelRightGyroSlidesTurret(1, 0.3, 2650, 0.7, -440, 0);
+            drive.moveIMUJunctionLeft(0.10, stageSwitchingPipelineLeftSide);
+            drive.accelRightGyroSlidesTurret(2.25, 0.3, 2650, 0.7, -440, 0);
             sleep(100);
             drive.moveSlidesToHeightABS(2300, 0.3);
             drive.openClaw();
             //Drop cone on the first medium junction
 
-            drive.accelStraightGyroSlidesTurret(13.55, 0.5, 2000, 0.4, 0,0.3);
+            drive.accelStraightGyroSlidesTurret(13.75, 0.5, 2000, 0.4, 0,0.3);
             sleep(150);
-            drive.driveStraightGyroSlidesTurret(-2, 0.55, 2000, 0, 0, 0.3);
-            drive.accelLeftGyroSlidesTurret(31.5, 0.6, 650, 0.5, 420, 0.3);
+            drive.driveStraightGyroSlidesTurret(-2.8, 0.55, 2000, 0, 0, 0.3);
+            drive.accelLeftGyroSlidesTurret(31.3, 0.6, 650, 0.5, 420, 0.3);
             drive.closeClaw();
             sleep(200);
             drive.moveSlidesToHeightABS(1100, 0.6);
@@ -182,7 +182,7 @@ public class RedLeft extends LinearOpMode {
             sleep(150);
 
             drive.driveStraightGyroSlidesTurret(2.4, 0.3, 550, 0.4, 420, 0.3);
-            drive.accelLeftGyroSlidesTurret(10, 0.6, 550, 0, 420, 0.55);
+            drive.accelLeftGyroSlidesTurret(9.75, 0.6, 550, 0, 420, 0.55);
             sleep(100);
             drive.closeClaw();
             sleep(200);
@@ -197,12 +197,12 @@ public class RedLeft extends LinearOpMode {
 
             drive.driveStraightGyroSlidesTurret(2.5, 0.3, 450, 0.4, 880, 0.3);
             // drive.turnTankGyro(-2.5, 0.3);
-            drive.accelLeftGyroSlidesTurret(37.8, 0.85, 450, 0, 420, 0.4);
+            drive.accelLeftGyroSlidesTurret(39.8, 0.85, 450, 0, 420, 0.4);
             sleep(100);
             drive.closeClaw();
             sleep(200);
             drive.moveSlidesToHeightABS(1200, 0.5);
-            drive.turnTankGyro(-2.3, 0.3);
+            // drive.turnTankGyro(-2.3, 0.3);
             drive.accelRightGyroSlidesTurret(35, 0.8, 2000, 0.4, 0, 0.3);
 
             drive.strafeIMUJunctionLeft(false, 0.2, stageSwitchingPipelineLeftSide);
