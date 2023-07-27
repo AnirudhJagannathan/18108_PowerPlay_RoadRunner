@@ -111,7 +111,6 @@ public class RedRight extends LinearOpMode {
                             tagToTelemetry(tagOfInterest);
                         }
                     }
-
                 }
                 else
                 {
@@ -162,16 +161,23 @@ public class RedRight extends LinearOpMode {
             drive.closeClaw();
             camera.setPipeline(stageSwitchingPipeline);
 
-            drive.accelStraightGyroSlidesTurret(37, 0.5, 900, 0.8, 440,0.3);
+            drive.accelStraightGyroSlidesTurret(36.5, 0.5, 900, 0.8, 440,0.3);
             sleep(100);
             drive.moveIMUJunction(0.15, stageSwitchingPipeline);
             drive.accelLeftGyroSlidesTurret(2, 0.3, 2550, 0.7, 440, 0);
             sleep(100);
             drive.moveSlidesToHeightABS(2300, 0.3);
             drive.openClaw();
+            sleep(350);
+
+            drive.accelRightGyroSlidesTurret(5, 0.4, 1000, 0, 0, 0);
+            drive.accelStraightGyroSlidesTurret(14, 0.5, 1200, 0.7, 0, 0.3);
+            sleep(200);
+            drive.accelStraightGyroSlidesTurret(-7, 0.3, 0, 0, 0, 0);
+
             //Drop cone on the first medium junction
 
-            drive.accelStraightGyroSlidesTurret(14.5, 0.5, 2000, 0.4, 0,0.3);
+            /* drive.accelStraightGyroSlidesTurret(14.5, 0.5, 2000, 0.4, 0,0.3);
             sleep(150);
             drive.driveStraightGyroSlidesTurret(-4.7, 0.55, 2000, 0, 0, 0.3);
             drive.accelRightGyroSlidesTurret(28.5, 0.6, 650, 0.5, -420, 0.3);
@@ -213,6 +219,8 @@ public class RedRight extends LinearOpMode {
             drive.moveSlidesToHeightABS(3450, 0.3);
             drive.openClaw();
             drive.accelStraightGyroSlidesTurret(-5, 0.2, 3000, 0, 0, 0);
+
+             */
 
             /*
             drive.moveSlidesToHeightABS(2450, 0.4);
@@ -272,15 +280,15 @@ public class RedRight extends LinearOpMode {
             //Move to the medium junction from the start and drop the cone
 
             if(tagOfInterest.id == LEFT)
-                drive.accelLeftGyroSlidesTurret(14, 0.5, 200, 0.4, 0, 0.6);
+                drive.accelLeftGyroSlidesTurret(28, 0.5, 500, 0.5, 0, 0.3);
                 //Move to square one
 
             else if(tagOfInterest.id == MIDDLE)
-                drive.accelRightGyroSlidesTurret(14, 0.5, 200, 0.4, 0, 0.6);
+                drive.accelRightGyroSlidesTurret(0, 0.5, 500, 0.5, 0, 0.3);
                 //Move to square two
 
             else if(tagOfInterest.id == RIGHT) {
-                drive.accelRightGyroSlidesTurret(40, 0.8, 200, 0.5, 0, 0.7);
+                drive.accelRightGyroSlidesTurret(24, 0.8, 500, 0.5, 0, 0.3);
                 //drive.accelStraightGyroSlidesTurret(-4, 0.3, 200, 0, 0, 0);
             }
             //Move to square three

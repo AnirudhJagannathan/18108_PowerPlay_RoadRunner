@@ -12,7 +12,6 @@ public class OdometryTest extends LinearOpMode {
         SampleMecanumDrive drive = new SampleMecanumDrive(this, hardwareMap);
 
         while (opModeInInit()) {
-
             for (int i = 0; i <= 3; i++) {
                 drive.getMotors().get(i).setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
                 drive.getMotors().get(i).setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
